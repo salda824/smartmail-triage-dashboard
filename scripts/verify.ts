@@ -219,6 +219,142 @@ async function main() {
   );
 
   // -------------------------------------------------------------------------
+  section('Casos de regresion (fallos vistos con correo real)');
+  // -------------------------------------------------------------------------
+
+  const classifyCase = (
+    senderEmail: string,
+    subject: string,
+    body: string,
+    senderName = '',
+  ) =>
+    classifyEmail({
+      senderEmail,
+      senderName: senderName || senderEmail.split('@')[0],
+      subject,
+      body,
+      dateReceived: ref.toISOString(),
+    }).category;
+
+  // "ups" hacia match dentro de "groups-noreply@..." y mandaba correo social
+  // de LinkedIn a la categoria de transportadoras.
+  check(
+    'groups-noreply@linkedin no cae en FINANCE',
+    classifyCase(
+      'groups-noreply@linkedin.com',
+      'No te pierdas las conversaciones de Inteligencia Artificial',
+      'Mira las publicaciones recomendadas del grupo.',
+    ) !== 'FINANCE',
+    classifyCase(
+      'groups-noreply@linkedin.com',
+      'No te pierdas las conversaciones de Inteligencia Artificial',
+      'Mira las publicaciones recomendadas del grupo.',
+    ),
+  );
+
+  check(
+    'un envio real de UPS sigue en FINANCE',
+    classifyCase(
+      'mcinfo@ups.com',
+      'Your UPS package is on the way',
+      'Tracking number: 1Z999AA10123456784. Estimated delivery September 2.',
+    ) === 'FINANCE',
+  );
+
+  // LinkedIn: alertas de empleo si, red social no.
+  check(
+    'alerta de empleo de LinkedIn -> JOB',
+    classifyCase(
+      'jobalerts-noreply@linkedin.com',
+      'Mercado Libre - Senior Software Engineer Backend publicado el 8/25/26',
+      'Ver empleos en Bogota. Nuevas vacantes que coinciden con tu busqueda guardada.',
+    ) === 'JOB',
+  );
+  check(
+    'invitacion de contacto de LinkedIn no es JOB',
+    classifyCase(
+      'invitations@linkedin.com',
+      'Te he enviado una solicitud de contacto',
+      'Brandon Eduardo esta esperando tu respuesta.',
+    ) !== 'JOB',
+    classifyCase(
+      'invitations@linkedin.com',
+      'Te he enviado una solicitud de contacto',
+      'Brandon Eduardo esta esperando tu respuesta.',
+    ),
+  );
+  check(
+    'aviso de "vieron tu perfil" no es JOB',
+    classifyCase(
+      'messages-noreply@linkedin.com',
+      '5 personas han visto tu perfil',
+      'Tu perfil no pasa desapercibido.',
+    ) !== 'JOB',
+  );
+
+  // Acuse de postulacion: el asunto no menciona vacante, la senal esta en el cuerpo.
+  check(
+    'acuse de postulacion -> JOB',
+    classifyCase(
+      'Recruitment@woodplc.com',
+      'Thank you for your interest in Wood',
+      'Dear Juan, Thank you for your interest in Wood and your application for the Internship position in Bogota, Colombia.',
+    ) === 'JOB',
+    classifyCase(
+      'Recruitment@woodplc.com',
+      'Thank you for your interest in Wood',
+      'Dear Juan, Thank you for your interest in Wood and your application for the Internship position in Bogota, Colombia.',
+    ),
+  );
+
+  check(
+    'correo de un ATS (teamtailor) -> JOB',
+    classifyCase(
+      'no-reply@qualacompany.teamtailor-mail.com',
+      'Inicia sesion en Quala Internacional',
+      'Haz clic en el enlace para iniciar sesion en Connect.',
+    ) === 'JOB',
+  );
+
+  // Factura electronica DIAN: asunto sin palabras, todo el peso en el cuerpo.
+  check(
+    'factura electronica colombiana -> FINANCE',
+    classifyCase(
+      'notificaciones@thefactoryhka.com.co',
+      '860075558;UNIVERSIDAD DE LA SABANA;UPQ134855;01;',
+      'Tipo de Documento: Factura Electronica de Venta. DATOS DEL ADQUIRENTE Nit: 222222222222 Razon Social: Consumidor Final.',
+    ) === 'FINANCE',
+    classifyCase(
+      'notificaciones@thefactoryhka.com.co',
+      '860075558;UNIVERSIDAD DE LA SABANA;UPQ134855;01;',
+      'Tipo de Documento: Factura Electronica de Venta. DATOS DEL ADQUIRENTE Nit: 222222222222 Razon Social: Consumidor Final.',
+    ),
+  );
+
+  // "Master Class" en dos palabras no casaba con el patron "masterclass".
+  check(
+    'invitacion a Master Class -> INTERESTING',
+    classifyCase(
+      'hola@imhapi.app',
+      'Invitacion: Juan, Invitacion Master Class Hapi: Cripto mas alla del precio',
+      'Piero Sifuentes y Camilo analizan que mueve realmente al mercado cripto. 60 min en vivo.',
+    ) === 'INTERESTING',
+    classifyCase(
+      'hola@imhapi.app',
+      'Invitacion: Juan, Invitacion Master Class Hapi: Cripto mas alla del precio',
+      'Piero Sifuentes y Camilo analizan que mueve realmente al mercado cripto. 60 min en vivo.',
+    ),
+  );
+
+  // -------------------------------------------------------------------------
+  section('Saneado de caracteres invisibles');
+  // -------------------------------------------------------------------------
+  const { stripInvisible, toSingleLine } = await import('../src/lib/gmail/sanitize');
+  const padded = `Oferta especial͏͏͏​​   de la semana­`;
+  check('quita el relleno de los boletines', stripInvisible(padded) === 'Oferta especial de la semana', stripInvisible(padded));
+  check('recorta el snippet', toSingleLine('a'.repeat(400)).length === 220);
+
+  // -------------------------------------------------------------------------
   section('Ciclo completo sobre SQLite');
   // -------------------------------------------------------------------------
   const { runSync } = await import('../src/lib/sync');

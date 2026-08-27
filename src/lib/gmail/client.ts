@@ -1,4 +1,5 @@
 import { google, type gmail_v1 } from 'googleapis';
+import { stripInvisible, toSingleLine } from '@/lib/gmail/sanitize';
 import { MailSourceError, type FetchOptions, type MailSource, type RawMessage } from '@/lib/gmail/types';
 
 /**
@@ -116,15 +117,17 @@ export function toRawMessage(message: gmail_v1.Schema$Message): RawMessage | nul
     ? new Date(Number(message.internalDate)).toISOString()
     : new Date(headerValue(headers, 'Date') || Date.now()).toISOString();
 
+  const body = stripInvisible(extractBody(message.payload) || message.snippet || '');
+
   return {
     id: message.id,
     threadId: message.threadId ?? message.id,
     senderName: sender.name,
     senderEmail: sender.email,
-    subject: headerValue(headers, 'Subject') || '(sin asunto)',
+    subject: stripInvisible(headerValue(headers, 'Subject')) || '(sin asunto)',
     dateReceived,
-    snippet: message.snippet ?? '',
-    body: extractBody(message.payload) || message.snippet || '',
+    snippet: toSingleLine(message.snippet || body),
+    body,
     isRead: !labels.includes('UNREAD'),
     labels,
   };

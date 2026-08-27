@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "sync": "tsx scripts/sync.ts",
     "seed": "tsx scripts/sync.ts --mode demo",
+    "reset": "tsx scripts/reset-db.ts",
     "verify": "tsx scripts/verify.ts",
     "gmail:auth": "tsx scripts/gmail-auth.ts",
     "cron:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-cron.ps1"

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { buildDemoMessages } from '@/lib/gmail/demo-data';
 import { GmailSource } from '@/lib/gmail/client';
+import { stripInvisible, toSingleLine } from '@/lib/gmail/sanitize';
 import {
   MailSourceError,
   type FetchOptions,
@@ -102,8 +103,8 @@ function normalizeBridgeMessage(item: unknown, index: number): RawMessage | null
   const dateRaw = str('dateReceived', 'date_received', 'date', 'internalDate', 'receivedAt');
   const parsedDate = parseFlexibleDate(dateRaw);
 
-  const body = str('body', 'bodyPreview', 'body_preview', 'text', 'content', 'snippet');
-  const snippet = str('snippet', 'preview') || body.replace(/\s+/g, ' ').slice(0, 180);
+  const body = stripInvisible(str('body', 'bodyPreview', 'body_preview', 'text', 'content', 'snippet'));
+  const snippet = toSingleLine(str('snippet', 'preview') || body);
 
   const labels = Array.isArray(raw.labels)
     ? (raw.labels as unknown[]).filter((l): l is string => typeof l === 'string')
@@ -125,7 +126,7 @@ function normalizeBridgeMessage(item: unknown, index: number): RawMessage | null
     threadId: str('threadId', 'thread_id') || id,
     senderName,
     senderEmail: senderEmail.toLowerCase(),
-    subject: str('subject', 'title') || '(sin asunto)',
+    subject: stripInvisible(str('subject', 'title')) || '(sin asunto)',
     dateReceived: parsedDate,
     snippet,
     body: body || snippet,

@@ -306,6 +306,8 @@ En Linux o macOS, el equivalente en crontab:
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run verify` | Pruebas del clasificador, extractores y ciclo completo sobre SQLite |
 | `npm run seed` | Llena la base con los datos de demostración |
+| `npm run reset -- --demo` | Quita del caché los correos de demostración |
+| `npm run reset -- --all` | Vacía el caché por completo (no toca Gmail) |
 | `npm run sync` | Sincroniza con la fuente configurada |
 | `npm run gmail:auth` | Obtiene el refresh token de Gmail |
 | `npm run cron:install` | Programa la sincronización diaria |
@@ -326,10 +328,16 @@ npm run sync -- --query "is:unread newer_than:7d" --max 50
 npm run verify
 ```
 
-55 comprobaciones: normalización de texto, parsing de montos en tres formatos,
+66 comprobaciones: normalización de texto, parsing de montos en tres formatos,
 extracción de fechas y guías, clasificación de los 19 correos de ejemplo,
-enriquecimiento de tarjetas y el ciclo completo sincronizar → leer → marcar →
-borrar sobre una base de pruebas aparte (`data/verify.db`, nunca la real).
+enriquecimiento de tarjetas, casos de regresión tomados de correo real, y el
+ciclo completo sincronizar → leer → marcar → borrar sobre una base de pruebas
+aparte (`data/verify.db`, nunca la real).
+
+Los casos de regresión documentan fallos que ya ocurrieron, para que no
+vuelvan. Por ejemplo: `ups` hacía match dentro de `groups-noreply@linkedin.com`
+y mandaba correo social a la categoría de transportadoras; las siglas de
+transportadora ahora llevan límites de palabra.
 
 ---
 

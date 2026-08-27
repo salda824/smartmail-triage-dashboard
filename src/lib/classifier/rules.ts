@@ -36,8 +36,13 @@ const JOB: CategoryRules = {
   category: 'JOB',
   priority: 6,
   domains: [
-    s(/linkedin\.com/, 5, 'linkedin'),
+    // Solo los buzones de alertas de empleo de LinkedIn. Un `linkedin.com` a
+    // secas arrastraba a esta categoria las invitaciones, los mensajes y los
+    // avisos de "vieron tu perfil", que son red social, no ofertas.
+    s(/(jobalerts|job-alerts|jobs-listings|jobs-noreply)[\w.-]*@[\w.-]*linkedin\.com/, 6, 'alertas de empleo de linkedin'),
     s(/(indeed|glassdoor|computrabajo|elempleo|magneto365|hiring\.cafe|lever\.co|greenhouse\.io|workable|smartrecruiters|bamboohr|ashbyhq|jobvite|talent\.com|occ\.com|bumeran|zonajobs|getonbrd|torre\.(ai|co)|wellfound|angel\.co)/, 5, 'portal de empleo'),
+    // Plataformas de seguimiento de candidatos: si escriben, es por un proceso.
+    s(/(teamtailor|myworkday|workday|successfactors|taleo|icims|avature|recruitee|personio|factorial)/, 5, 'plataforma de reclutamiento'),
     s(/(talent|careers?|recruit|rrhh|reclutamiento|jobs|empleo|seleccion|hiring)/, 3, 'buzon de reclutamiento'),
   ],
   subject: [
@@ -53,6 +58,10 @@ const JOB: CategoryRules = {
     s(/\b(jornada|tiempo completo|medio tiempo|full[- ]time|part[- ]time|modalidad (?:remota|hibrida|presencial)|remote|hybrid|on[- ]site)\b/, 2, 'modalidad'),
     s(/\b(perfil|requisitos|responsabilidades|requirements|responsibilities|qualifications)\b/, 2, 'descripcion de cargo'),
     s(/\b(practicante|pasante|semestre de practica|practica profesional|practica empresarial)\b/, 3, 'practicante'),
+    // Acuses de recibo de postulacion: llegan sin palabras de vacante en el
+    // asunto, pero son la parte del proceso que mas importa seguir.
+    s(/(your application|tu postulacion|hemos recibido tu (?:solicitud|postulacion)|we have (?:successfully )?received your application|thank you for applying|thank you for your interest in (?:employment|working)|gracias por (?:postularte|aplicar)|job application|internship position|for the (?:internship|intern) position)/, 5, 'acuse de postulacion'),
+    s(/\b(internship|intern|trainee|graduate program|programa de internship)\b/, 3, 'programa de practicas'),
   ],
 };
 
@@ -93,7 +102,9 @@ const FINANCE: CategoryRules = {
   domains: [
     s(/(bancolombia|davivienda|nequi|daviplata|bancodebogota|bbva|scotiabank|itau|nubank|falabella)/, 6, 'banco'),
     s(/(paypal|stripe|mercadopago|mercadolibre|payu|wompi|epayco|square|wise|payoneer)/, 6, 'pasarela de pago'),
-    s(/(servientrega|coordinadora|interrapidisimo|tcc|deprisa|dhl|fedex|ups|usps|estafeta|4-72)/, 6, 'transportadora'),
+    // Las siglas cortas van con limites de palabra: sin ellos, `ups` hacia
+    // match dentro de "groups-noreply@..." y mandaba correo social a finanzas.
+    s(/(servientrega|coordinadora|interrapidisimo|deprisa|fedex|estafeta|\bups\b|\busps\b|\bdhl\b|\btcc\b|\b4-72\b)/, 6, 'transportadora'),
     s(/(amazon|rappi|shein|aliexpress|temu|ebay|shopify|steam)/, 4, 'comercio'),
     s(/(billing|invoice|facturacion|pagos|cobros|receipts?)/, 4, 'buzon de facturacion'),
   ],
@@ -110,6 +121,13 @@ const FINANCE: CategoryRules = {
     s(/\b(numero de (?:guia|rastreo|seguimiento)|tracking number|numero de factura|invoice number|numero de orden|order number)\b/, 4, 'identificador'),
     s(/\b(tarjeta terminada en|card ending in|cuenta terminada en|ending in \d{4}|\*{2,}\d{4})\b/, 4, 'medio de pago'),
     s(/\b(metodo de pago|payment method|forma de pago|pse|tarjeta de credito|credit card|debito automatico)\b/, 3, 'medio de pago'),
+    // Facturacion electronica colombiana (DIAN). El asunto de estos correos es
+    // un codigo sin palabras, asi que toda la senal esta en el cuerpo. Van como
+    // tres senales independientes y no como una: el cuerpo pesa la mitad, y una
+    // sola no alcanzaba el umbral pese a ser evidencia inequivoca.
+    s(/(factura electronica|documento equivalente|documento soporte|nota (?:credito|debito)|\bcufe\b)/, 7, 'documento electronico'),
+    s(/(razon social|\bnit\b|adquirente|datos del emisor)/, 5, 'datos tributarios'),
+    s(/(\bdian\b|resolucion de facturacion|numeracion autorizada)/, 4, 'resolucion dian'),
   ],
 };
 
@@ -149,7 +167,7 @@ const INTERESTING: CategoryRules = {
     s(/(github|gitlab|stackoverflow|kaggle|arxiv|researchgate)/, 3, 'comunidad tecnica'),
   ],
   subject: [
-    s(/\b(webinar|masterclass|workshop|taller|charla|conferencia|conference|meetup|hackathon|bootcamp|summit)\b/, 6, 'evento formativo'),
+    s(/\b(webinar|master\s?class|workshop|taller|charla|conferencia|conference|meetup|hackathon|bootcamp|summit|clase magistral)\b/, 6, 'evento formativo'),
     s(/\b(curso|course|certificacion|certification|diplomado|especializacion|specialization|capacitacion|training)\b/, 5, 'curso'),
     s(/\b(guia|guide|tutorial|como (?:hacer|crear|construir)|how to|paso a paso|step by step|deep dive|case study|caso de estudio)\b/, 4, 'lectura larga'),
     s(/\b(invitacion|invitation|te invitamos|you're invited|youre invited|registrate|register now|inscribete)\b/, 4, 'invitacion'),
