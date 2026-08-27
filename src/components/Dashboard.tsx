@@ -2,13 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Inbox, SearchX } from 'lucide-react';
-import { CategoryTabs, type TabId } from '@/components/CategoryTabs';
-import { EmailCard } from '@/components/EmailCard';
-import { EmailRow } from '@/components/EmailRow';
-import { TopBar, type ViewMode } from '@/components/TopBar';
+import { EmailDetail } from '@/components/EmailDetail';
+import { EmailListItem } from '@/components/EmailListItem';
+import { Sidebar, type TabId } from '@/components/Sidebar';
+import { Toolbar, type Density } from '@/components/Toolbar';
 import { ToastStack, type ToastMessage } from '@/components/Toast';
-import type { PendingAction } from '@/components/EmailActions';
-import { CATEGORIES, type CategoryCounts, type DashboardStats, type Email } from '@/types/email';
+import {
+  CATEGORIES,
+  type CategoryCounts,
+  type DashboardStats,
+  type Email,
+  type PendingAction,
+} from '@/types/email';
 
 interface Props {
   initialEmails: Email[];
@@ -16,7 +21,10 @@ interface Props {
   initialSource: string;
 }
 
-const VIEW_STORAGE_KEY = 'smartmail:view';
+const STORAGE = {
+  density: 'smartmail:density',
+  detail: 'smartmail:detail',
+} as const;
 
 function emptyCounts(): CategoryCounts {
   return CATEGORIES.reduce((acc, key) => {
@@ -33,13 +41,16 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
   const [tab, setTab] = useState<TabId>('ALL');
   const [search, setSearch] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(false);
-  const [view, setView] = useState<ViewMode>('grid');
+  const [density, setDensity] = useState<Density>('comfortable');
+  const [detailOpen, setDetailOpen] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [syncing, setSyncing] = useState(false);
   const [pending, setPending] = useState<Record<string, PendingAction>>({});
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const toastId = useRef(0);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const pushToast = useCallback((tone: ToastMessage['tone'], text: string) => {
     toastId.current += 1;
@@ -50,16 +61,93 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // La preferencia de vista es del dispositivo, no del servidor: localStorage basta.
+  // Preferencias de disposicion: son del dispositivo, no del servidor.
   useEffect(() => {
-    const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
-    if (stored === 'grid' || stored === 'list') setView(stored);
+    try {
+      const d = window.localStorage.getItem(STORAGE.density);
+      if (d === 'comfortable' || d === 'compact') setDensity(d);
+      const p = window.localStorage.getItem(STORAGE.detail);
+      if (p === '0') setDetailOpen(false);
+    } catch {
+      // Almacenamiento bloqueado: se usan los valores por defecto.
+    }
   }, []);
 
-  const changeView = useCallback((next: ViewMode) => {
-    setView(next);
-    window.localStorage.setItem(VIEW_STORAGE_KEY, next);
+  const changeDensity = useCallback((value: Density) => {
+    setDensity(value);
+    try {
+      window.localStorage.setItem(STORAGE.density, value);
+    } catch {}
   }, []);
+
+  const toggleDetail = useCallback(() => {
+    setDetailOpen((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(STORAGE.detail, next ? '1' : '0');
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // Filtrado
+  // -------------------------------------------------------------------------
+
+  /**
+   * Se filtra en cliente sobre el cache ya cargado: son decenas o cientos de
+   * filas, no miles, y asi el buscador responde sin ida y vuelta al servidor.
+   */
+  const visible = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    return emails.filter((email) => {
+      if (tab !== 'ALL' && email.category !== tab) return false;
+      if (unreadOnly && email.isRead) return false;
+      if (!term) return true;
+      return (
+        email.subject.toLowerCase().includes(term) ||
+        email.senderName.toLowerCase().includes(term) ||
+        email.senderEmail.toLowerCase().includes(term) ||
+        email.snippet.toLowerCase().includes(term)
+      );
+    });
+  }, [emails, tab, unreadOnly, search]);
+
+  const selected = useMemo(
+    () => visible.find((e) => e.id === selectedId) ?? null,
+    [visible, selectedId],
+  );
+
+  // Si el correo activo sale del filtro, se pasa el foco al primero de la lista.
+  useEffect(() => {
+    if (visible.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !visible.some((e) => e.id === selectedId)) {
+      setSelectedId(visible[0].id);
+    }
+  }, [visible, selectedId]);
+
+  const counts = useMemo(() => {
+    const result = emptyCounts();
+    for (const email of emails) {
+      const bucket = result[email.category];
+      if (!bucket) continue;
+      bucket.total += 1;
+      if (!email.isRead) bucket.unread += 1;
+    }
+    return result;
+  }, [emails]);
+
+  const totals = useMemo(
+    () => ({
+      total: emails.length,
+      unread: emails.reduce((acc, e) => acc + (e.isRead ? 0 : 1), 0),
+    }),
+    [emails],
+  );
 
   // -------------------------------------------------------------------------
   // Datos
@@ -105,17 +193,10 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
 
       await reloadEmails();
       if (data.stats) setStats(data.stats);
-      if (data.source) setSource(data.source);
 
       const { fetched = 0, inserted = 0, updated = 0 } = data;
-      pushToast(
-        'success',
-        `Sincronizado: ${fetched} correos revisados, ${inserted} nuevos, ${updated} actualizados.`,
-      );
-
-      for (const warning of (data.errors ?? []) as string[]) {
-        pushToast('info', warning);
-      }
+      pushToast('success', `${fetched} revisados · ${inserted} nuevos · ${updated} actualizados`);
+      for (const warning of (data.errors ?? []) as string[]) pushToast('info', warning);
     } catch (error) {
       pushToast('error', `No se pudo contactar el servidor: ${String(error)}`);
     } finally {
@@ -124,7 +205,7 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
   }, [pushToast, reloadEmails]);
 
   // -------------------------------------------------------------------------
-  // Acciones por correo (optimistas, con reversion si el servidor rechaza)
+  // Acciones (optimistas, con reversion si el servidor rechaza)
   // -------------------------------------------------------------------------
 
   const handleToggleRead = useCallback(
@@ -133,9 +214,7 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
       const snapshot = emails;
 
       setPending((p) => ({ ...p, [email.id]: 'read' }));
-      setEmails((prev) =>
-        prev.map((e) => (e.id === email.id ? { ...e, isRead: nextRead } : e)),
-      );
+      setEmails((prev) => prev.map((e) => (e.id === email.id ? { ...e, isRead: nextRead } : e)));
 
       try {
         const response = await fetch(`/api/emails/${encodeURIComponent(email.id)}/read`, {
@@ -150,7 +229,6 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
           pushToast('error', data.error ?? 'No se pudo actualizar el correo.');
           return;
         }
-        if (data.warning) pushToast('info', data.warning);
         await refreshStats();
       } catch (error) {
         setEmails(snapshot);
@@ -169,9 +247,13 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
   const handleDelete = useCallback(
     async (email: Email) => {
       const snapshot = emails;
+      // Se preselecciona el siguiente antes de quitarlo, para no perder el sitio.
+      const index = visible.findIndex((e) => e.id === email.id);
+      const next = visible[index + 1] ?? visible[index - 1] ?? null;
 
       setPending((p) => ({ ...p, [email.id]: 'delete' }));
       setEmails((prev) => prev.filter((e) => e.id !== email.id));
+      setSelectedId(next?.id ?? null);
 
       try {
         const response = await fetch(`/api/emails/${encodeURIComponent(email.id)}/delete`, {
@@ -184,12 +266,9 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
           pushToast('error', data.error ?? 'No se pudo mover a la papelera.');
           return;
         }
-
         pushToast(
           'success',
-          data.syncedToGmail
-            ? 'Movido a la papelera de Gmail.'
-            : 'Quitado del panel.',
+          data.syncedToGmail ? 'Movido a la papelera de Gmail.' : 'Quitado del panel.',
         );
         if (data.warning) pushToast('info', data.warning);
         await refreshStats();
@@ -198,120 +277,148 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
         pushToast('error', `Error de red: ${String(error)}`);
       } finally {
         setPending((p) => {
-          const next = { ...p };
-          delete next[email.id];
-          return next;
+          const nextPending = { ...p };
+          delete nextPending[email.id];
+          return nextPending;
         });
       }
     },
-    [emails, pushToast, refreshStats],
+    [emails, visible, pushToast, refreshStats],
   );
 
   // -------------------------------------------------------------------------
-  // Filtrado
+  // Teclado
   // -------------------------------------------------------------------------
 
-  /**
-   * El filtrado ocurre en cliente sobre el cache ya cargado: son cientos de
-   * filas, no miles, y asi el buscador responde sin ida y vuelta al servidor.
-   */
-  const visible = useMemo(() => {
-    const term = search.trim().toLowerCase();
+  const move = useCallback(
+    (delta: number) => {
+      if (visible.length === 0) return;
+      const current = visible.findIndex((e) => e.id === selectedId);
+      const nextIndex = Math.min(Math.max((current === -1 ? 0 : current) + delta, 0), visible.length - 1);
+      const next = visible[nextIndex];
+      if (!next) return;
 
-    return emails.filter((email) => {
-      if (tab !== 'ALL' && email.category !== tab) return false;
-      if (unreadOnly && email.isRead) return false;
-      if (!term) return true;
-
-      return (
-        email.subject.toLowerCase().includes(term) ||
-        email.senderName.toLowerCase().includes(term) ||
-        email.senderEmail.toLowerCase().includes(term) ||
-        email.snippet.toLowerCase().includes(term)
-      );
-    });
-  }, [emails, tab, unreadOnly, search]);
-
-  // Los contadores de las pestanas salen de la lista en memoria para que
-  // reaccionen al instante cuando el usuario marca o borra algo.
-  const counts = useMemo(() => {
-    const result = emptyCounts();
-    for (const email of emails) {
-      const bucket = result[email.category];
-      if (!bucket) continue;
-      bucket.total += 1;
-      if (!email.isRead) bucket.unread += 1;
-    }
-    return result;
-  }, [emails]);
-
-  const totals = useMemo(
-    () => ({
-      total: emails.length,
-      unread: emails.reduce((acc, e) => acc + (e.isRead ? 0 : 1), 0),
-    }),
-    [emails],
+      setSelectedId(next.id);
+      // Mantiene visible la fila activa dentro del panel, sin mover la pagina.
+      listRef.current
+        ?.querySelector(`[data-email-id="${CSS.escape(next.id)}"]`)
+        ?.scrollIntoView({ block: 'nearest' });
+    },
+    [visible, selectedId],
   );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const el = event.target as HTMLElement | null;
+      if (el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      switch (event.key) {
+        case 'j':
+        case 'ArrowDown':
+          event.preventDefault();
+          move(1);
+          break;
+        case 'k':
+        case 'ArrowUp':
+          event.preventDefault();
+          move(-1);
+          break;
+        case 'e':
+          if (selected) {
+            event.preventDefault();
+            void handleToggleRead(selected);
+          }
+          break;
+        case '#':
+        case 'Delete':
+          if (selected) {
+            event.preventDefault();
+            void handleDelete(selected);
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [move, selected, handleToggleRead, handleDelete]);
 
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
 
   return (
-    <div className="min-h-screen">
-      <TopBar
-        search={search}
-        onSearchChange={setSearch}
-        unreadCount={totals.unread}
-        totalCount={totals.total}
+    <div className="flex h-screen overflow-hidden bg-bg text-text">
+      <Sidebar
+        active={tab}
+        counts={counts}
+        totals={totals}
         lastSyncAt={stats.lastSyncAt}
         syncing={syncing}
-        onSync={handleSync}
-        view={view}
-        onViewChange={changeView}
-        unreadOnly={unreadOnly}
-        onUnreadOnlyChange={setUnreadOnly}
         source={source}
+        onChange={setTab}
+        onSync={handleSync}
       />
 
-      <div className="mx-auto max-w-[1600px] px-4 py-4 lg:px-6">
-        <CategoryTabs active={tab} counts={counts} totals={totals} onChange={setTab} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Toolbar
+          tab={tab}
+          visibleCount={visible.length}
+          totalCount={emails.length}
+          search={search}
+          onSearchChange={setSearch}
+          unreadOnly={unreadOnly}
+          onUnreadOnlyChange={setUnreadOnly}
+          density={density}
+          onDensityChange={changeDensity}
+          detailOpen={detailOpen}
+          onToggleDetail={toggleDetail}
+        />
 
-        <main className="mt-4">
-          {visible.length === 0 ? (
-            <EmptyState hasFilters={Boolean(search) || unreadOnly || tab !== 'ALL'} total={emails.length} />
-          ) : view === 'grid' ? (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {visible.map((email) => (
-                <EmailCard
+        <div className="flex min-h-0 flex-1">
+          {/* Panel de lista: scroll propio */}
+          <div
+            ref={listRef}
+            role="listbox"
+            aria-label="Correos"
+            className={cnList(detailOpen)}
+          >
+            {visible.length === 0 ? (
+              <EmptyState
+                hasFilters={Boolean(search) || unreadOnly || tab !== 'ALL'}
+                total={emails.length}
+              />
+            ) : (
+              visible.map((email) => (
+                <EmailListItem
                   key={email.id}
                   email={email}
+                  selected={email.id === selectedId}
+                  density={density}
                   pending={pending[email.id] ?? null}
+                  onSelect={(e) => setSelectedId(e.id)}
                   onToggleRead={handleToggleRead}
                   onDelete={handleDelete}
                 />
-              ))}
-            </div>
-          ) : (
-            <div className="surface overflow-hidden">
-              {visible.map((email) => (
-                <EmailRow
-                  key={email.id}
-                  email={email}
-                  pending={pending[email.id] ?? null}
-                  onToggleRead={handleToggleRead}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
 
-          {visible.length > 0 && (
-            <p className="mt-4 text-center text-[11px] text-slate-600">
-              Mostrando {visible.length} de {emails.length} correos en cache
-            </p>
+          {/* Panel de lectura: scroll propio */}
+          {detailOpen && (
+            <div className="hidden min-w-0 flex-1 border-l border-line bg-surface lg:block">
+              <EmailDetail
+                email={selected}
+                pending={selected ? (pending[selected.id] ?? null) : null}
+                onToggleRead={handleToggleRead}
+                onDelete={handleDelete}
+              />
+            </div>
           )}
-        </main>
+        </div>
       </div>
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
@@ -319,23 +426,31 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
   );
 }
 
+/** El panel de lista se estrecha a ancho fijo cuando hay panel de lectura al lado. */
+function cnList(detailOpen: boolean): string {
+  return [
+    'min-h-0 overflow-y-auto',
+    detailOpen ? 'w-full shrink-0 lg:w-[26rem] xl:w-[30rem]' : 'w-full',
+  ].join(' ');
+}
+
 function EmptyState({ hasFilters, total }: { hasFilters: boolean; total: number }) {
   const Icon = hasFilters ? SearchX : Inbox;
 
   return (
-    <div className="surface flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-midnight-700 text-slate-500">
-        <Icon size={22} />
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-2 text-text-3">
+        <Icon size={20} />
       </span>
-      <h2 className="text-sm font-semibold text-slate-300">
-        {hasFilters ? 'Ningun correo coincide con el filtro' : 'La bandeja esta vacia'}
+      <h2 className="text-[13px] font-medium text-text-2">
+        {hasFilters ? 'Ningun correo coincide' : 'La bandeja esta vacia'}
       </h2>
-      <p className="max-w-sm text-xs leading-relaxed text-slate-500">
+      <p className="max-w-[16rem] text-xs leading-relaxed text-text-3">
         {hasFilters
-          ? 'Prueba con otro termino de busqueda o cambia de categoria.'
+          ? 'Prueba con otro termino o cambia de categoria.'
           : total === 0
-            ? 'Pulsa "Sincronizar Ahora" para traer y clasificar tus correos recientes.'
-            : 'Todos los correos de esta vista fueron atendidos.'}
+            ? 'Pulsa "Sincronizar" para traer y clasificar tus correos.'
+            : 'Todo lo de esta vista quedo atendido.'}
       </p>
     </div>
   );

@@ -4,21 +4,21 @@ import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type Size = 'sm' | 'md';
+type Size = 'xs' | 'sm' | 'md';
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'bg-accent-blue text-white shadow-glow hover:bg-blue-500 active:bg-blue-600 disabled:bg-accent-blue/50',
+    'bg-accent text-white hover:bg-accent/90 active:bg-accent/80 disabled:bg-accent/40 disabled:text-white/70',
   secondary:
-    'bg-midnight-700 text-slate-200 ring-1 ring-inset ring-white/10 hover:bg-midnight-600 hover:text-white',
-  ghost: 'bg-transparent text-slate-400 hover:bg-white/5 hover:text-slate-100',
-  danger:
-    'bg-accent-coral/15 text-red-300 ring-1 ring-inset ring-accent-coral/30 hover:bg-accent-coral/25 hover:text-red-200',
+    'bg-surface-2 text-text border border-line hover:bg-surface-3 hover:border-line-strong',
+  ghost: 'bg-transparent text-text-2 hover:bg-surface-2 hover:text-text',
+  danger: 'bg-transparent text-accent-red border border-accent-red/25 hover:bg-accent-red/10',
 };
 
 const SIZES: Record<Size, string> = {
+  xs: 'h-7 gap-1.5 px-2 text-2xs',
   sm: 'h-8 gap-1.5 px-2.5 text-xs',
-  md: 'h-10 gap-2 px-4 text-sm',
+  md: 'h-9 gap-2 px-3.5 text-[13px]',
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -34,8 +34,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150',
-        'disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex select-none items-center justify-center whitespace-nowrap rounded-lg font-medium',
+        'transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-70',
         VARIANTS[variant],
         SIZES[size],
         className,

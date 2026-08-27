@@ -2,32 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+   Tokens de color.
+
+   Los valores van como canales RGB sueltos para que Tailwind pueda aplicarles
+   opacidad (`bg-accent/15`). El tema oscuro es el de por defecto.
+
+   Criterio: nada de negro puro contra blanco puro. El fondo se levanta a #0D0E12
+   y el texto baja a #E3E4E8; la relacion sigue muy por encima de AAA pero deja
+   de brillar. Los acentos son versiones desaturadas de la paleta original: el
+   mismo tono, sin el neon que cansa la vista a los diez minutos.
+--------------------------------------------------------------------------- */
+
 @layer base {
   :root {
-    /* Pila del sistema: evita depender de una descarga de fuentes en build. */
-    --font-sans: 'Inter', 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system,
-      'Helvetica Neue', Arial, sans-serif;
+    --bg: 13 14 18;
+    --surface: 20 22 27;
+    --surface-2: 26 29 35;
+    --surface-3: 34 38 45;
+
+    --text: 227 228 232;
+    --text-2: 155 161 172;
+    --text-3: 110 117 130;
+
+    --accent: 91 141 239;
+    --accent-violet: 139 127 232;
+    --accent-amber: 224 164 88;
+    --accent-red: 224 108 117;
+    --accent-green: 87 167 115;
+    --accent-cyan: 79 182 196;
+
+    --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.12);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -16px rgba(0, 0, 0, 0.8);
   }
 
-  html {
-    color-scheme: dark;
+  :root[data-theme='light'] {
+    --bg: 249 250 251;
+    --surface: 255 255 255;
+    --surface-2: 244 245 247;
+    --surface-3: 234 236 240;
+
+    --text: 24 27 33;
+    --text-2: 90 98 112;
+    --text-3: 138 146 160;
+
+    --accent: 42 106 214;
+    --accent-violet: 108 92 216;
+    --accent-amber: 183 116 24;
+    --accent-red: 198 62 72;
+    --accent-green: 40 122 76;
+    --accent-cyan: 24 132 148;
+
+    --line: rgba(16, 20, 28, 0.09);
+    --line-strong: rgba(16, 20, 28, 0.16);
+    --shadow: 0 1px 2px rgba(16, 20, 28, 0.06), 0 8px 24px -16px rgba(16, 20, 28, 0.25);
+  }
+
+  html,
+  body {
+    height: 100%;
   }
 
   body {
-    @apply bg-midnight-900 text-slate-200 antialiased;
+    @apply bg-bg text-text antialiased;
     font-family: var(--font-sans);
-    /* Halos de color muy tenues: dan profundidad sin competir con el contenido. */
-    background-image:
-      radial-gradient(60rem 40rem at 15% -10%, rgba(59, 130, 246, 0.10), transparent 60%),
-      radial-gradient(50rem 35rem at 90% 0%, rgba(139, 92, 246, 0.10), transparent 55%);
-    background-attachment: fixed;
+    /* La app ocupa exactamente el viewport: el scroll vive dentro de los paneles. */
+    overflow: hidden;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  :root {
+    --font-sans: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system,
+      'Helvetica Neue', Arial, sans-serif;
   }
 
   ::selection {
-    @apply bg-accent-blue/30 text-white;
+    background-color: rgb(var(--accent) / 0.28);
   }
 
-  /* Scrollbar acorde al tema oscuro (WebKit) */
+  /* Scrollbar discreta: aparece al pasar el cursor, no compite con el contenido. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  *:hover {
+    scrollbar-color: rgb(var(--surface-3)) transparent;
+  }
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -36,43 +97,40 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-midnight-600;
+    background-color: transparent;
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *:hover::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--surface-3));
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-midnight-500;
+    background-color: rgb(var(--text-3) / 0.5);
   }
 
   :focus-visible {
-    @apply outline-none ring-2 ring-accent-blue/70 ring-offset-2 ring-offset-midnight-900;
+    outline: 2px solid rgb(var(--accent) / 0.75);
+    outline-offset: 2px;
+  }
+
+  /* El foco por raton no debe pintar anillos; solo el de teclado. */
+  :focus:not(:focus-visible) {
+    outline: none;
   }
 }
 
 @layer components {
-  /* Superficie base de tarjetas y paneles. */
-  .surface {
-    @apply rounded-xl border border-white/[0.07] bg-midnight-800/70 backdrop-blur-sm;
+  .panel {
+    @apply rounded-xl border border-line bg-surface;
   }
 
-  .surface-hover {
-    @apply transition-colors duration-200 hover:border-white/[0.14] hover:bg-midnight-750/80;
-  }
-
-  /* Placeholder de carga. */
-  .skeleton {
-    @apply rounded bg-midnight-700;
-    background-image: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.06) 50%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    background-size: 800px 100%;
-    @apply animate-shimmer;
+  .hairline {
+    border-color: var(--line);
   }
 }
 
 @layer utilities {
-  /* Recorte a N lineas sin plugin externo. */
   .line-clamp-1,
   .line-clamp-2,
   .line-clamp-3 {
@@ -90,10 +148,38 @@
     -webkit-line-clamp: 3;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .animate-shimmer,
-    .animate-fade-up {
-      animation: none !important;
-    }
+  /* Desvanece el contenido al llegar al borde superior del panel al hacer scroll. */
+  .mask-fade-top {
+    mask-image: linear-gradient(to bottom, transparent, black 12px);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

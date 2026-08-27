@@ -388,12 +388,73 @@ scripts/
 └── install-cron.ps1                      tarea programada
 ```
 
+### Interfaz
+
+La app es un **armazón de altura fija**: ocupa exactamente el viewport y la
+página nunca hace scroll. El desplazamiento vive dentro de cada panel.
+
+```
+┌──────────┬─────────────────────────────────────────────┐
+│ Barra    │  Buscador · filtros · densidad · panel       │
+│ lateral  ├──────────────────────┬──────────────────────┤
+│          │                      │                      │
+│ Categorías  Lista (scroll)      │  Lectura (scroll)    │
+│ contadores│                     │                      │
+│ Sync      │                     │                      │
+│ Tema      │                     │                      │
+└──────────┴──────────────────────┴──────────────────────┘
+```
+
+- **Dos densidades**: cómoda (remitente, asunto, extracto y datos extraídos) y
+  compacta (una línea por correo, ~16 visibles a la vez).
+- **Panel de lectura** plegable, con los datos extraídos y el cuerpo en texto.
+- **Tema claro y oscuro**, con conmutador en la barra lateral. La preferencia se
+  guarda y se aplica antes de la primera pintura, así que no hay destello.
+
+Sobre la paleta: el enunciado original pedía `#0B0F19` con acentos de neón. En
+la práctica resultaba agresiva a la vista, así que se conservaron los tonos
+(azul, violeta, ámbar, rojo) pero desaturados, el fondo se levantó a `#0D0E12` y
+el texto se bajó a `#E3E4E8` en lugar de blanco puro.
+
 ### Atajos de teclado
 
 | Tecla | Acción |
 | --- | --- |
+| `J` / `↓` | Siguiente correo |
+| `K` / `↑` | Correo anterior |
+| `E` | Marcar leído / no leído |
+| `#` / `Supr` | Mover a la papelera |
 | `/` | Enfocar el buscador |
 | `Esc` | Limpiar la búsqueda |
+
+---
+
+## OneDrive
+
+Si el proyecto vive dentro de una carpeta sincronizada por OneDrive, el
+servidor de desarrollo falla de forma intermitente:
+
+```
+Error: EBUSY: resource busy or locked, open '.next\static\chunks\app\page.js'
+```
+
+OneDrive bloquea cada archivo mientras lo sube, y Next.js reescribe los chunks
+de `.next` en cada recompilación. Los dos se pelean por el mismo archivo.
+
+Se probaron dos atajos y **ninguno funciona**, por si tienes la tentación:
+
+- Mover `distDir` fuera del proyecto: Next lo resuelve contra la raíz del
+  proyecto, y los chunks generados dejan de encontrar `node_modules`.
+- Un junction de `.next` a otra unidad: Node resuelve la ruta real antes de
+  buscar `node_modules`, con el mismo resultado.
+
+Las soluciones que sí funcionan:
+
+1. **Mover el proyecto fuera de OneDrive** (por ejemplo a `C:\dev\`). Es la
+   recomendada, y también evita sincronizar los ~30.000 archivos de
+   `node_modules`.
+2. **Excluir la carpeta en OneDrive**: Configuración → Sincronización y copia de
+   seguridad → Configuración avanzada → Excluir archivos.
 
 ---
 

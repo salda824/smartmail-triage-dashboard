@@ -16,13 +16,14 @@ export type Category = (typeof CATEGORIES)[number];
 export interface CategoryMeta {
   id: Category;
   label: string;
-  emoji: string;
-  /** Clases Tailwind para el badge de la categoria. */
+  /** Etiqueta corta para la barra lateral cuando el espacio aprieta. */
+  short: string;
+  /** Clases Tailwind del punto/indicador de color. */
+  dot: string;
+  /** Clases del badge (fondo + texto). */
   badge: string;
-  /** Color del borde/acento de la tarjeta. */
-  accent: string;
-  /** Color hexadecimal plano, util para graficos o estilos inline. */
-  hex: string;
+  /** Clase de color de texto suelta, para iconos. */
+  text: string;
   description: string;
 }
 
@@ -30,55 +31,55 @@ export const CATEGORY_META: Record<Category, CategoryMeta> = {
   JOB: {
     id: 'JOB',
     label: 'Ofertas de Empleo',
-    emoji: '\u{1F4BC}',
-    badge: 'bg-accent-violet/15 text-violet-300 ring-1 ring-inset ring-accent-violet/30',
-    accent: 'border-l-accent-violet',
-    hex: '#8B5CF6',
+    short: 'Empleo',
+    dot: 'bg-accent-violet',
+    badge: 'bg-accent-violet/12 text-accent-violet',
+    text: 'text-accent-violet',
     description: 'Vacantes, practicas y procesos de seleccion',
   },
   URGENT: {
     id: 'URGENT',
     label: 'Urgente',
-    emoji: '\u{1F6A8}',
-    badge: 'bg-accent-coral/15 text-red-300 ring-1 ring-inset ring-accent-coral/30',
-    accent: 'border-l-accent-coral',
-    hex: '#EF4444',
+    short: 'Urgente',
+    dot: 'bg-accent-red',
+    badge: 'bg-accent-red/12 text-accent-red',
+    text: 'text-accent-red',
     description: 'Requiere accion o respuesta inmediata',
   },
   FINANCE: {
     id: 'FINANCE',
     label: 'Pagos y Envios',
-    emoji: '\u{1F4B3}',
-    badge: 'bg-accent-orange/15 text-orange-300 ring-1 ring-inset ring-accent-orange/30',
-    accent: 'border-l-accent-orange',
-    hex: '#F97316',
+    short: 'Pagos',
+    dot: 'bg-accent-amber',
+    badge: 'bg-accent-amber/12 text-accent-amber',
+    text: 'text-accent-amber',
     description: 'Facturas, compras, bancos y paqueteria',
   },
   NEWS: {
     id: 'NEWS',
     label: 'Noticias',
-    emoji: '\u{1F4F0}',
-    badge: 'bg-accent-blue/15 text-blue-300 ring-1 ring-inset ring-accent-blue/30',
-    accent: 'border-l-accent-blue',
-    hex: '#3B82F6',
+    short: 'Noticias',
+    dot: 'bg-accent',
+    badge: 'bg-accent/12 text-accent',
+    text: 'text-accent',
     description: 'Newsletters y resumenes del sector',
   },
   INTERESTING: {
     id: 'INTERESTING',
     label: 'Interesantes',
-    emoji: '\u{1F4A1}',
-    badge: 'bg-accent-cyan/15 text-cyan-300 ring-1 ring-inset ring-accent-cyan/30',
-    accent: 'border-l-accent-cyan',
-    hex: '#06B6D4',
+    short: 'Lecturas',
+    dot: 'bg-accent-cyan',
+    badge: 'bg-accent-cyan/12 text-accent-cyan',
+    text: 'text-accent-cyan',
     description: 'Lecturas, webinars y recursos',
   },
   GENERAL: {
     id: 'GENERAL',
     label: 'General',
-    emoji: '\u{1F4E6}',
-    badge: 'bg-slate-500/15 text-slate-300 ring-1 ring-inset ring-slate-400/25',
-    accent: 'border-l-slate-500',
-    hex: '#64748B',
+    short: 'General',
+    dot: 'bg-text-3',
+    badge: 'bg-text-3/12 text-text-2',
+    text: 'text-text-3',
     description: 'Todo lo demas',
   },
 };
@@ -144,6 +145,9 @@ export interface EmailRow {
   created_at: string;
   updated_at: string;
 }
+
+/** Accion en vuelo sobre un correo, para mostrar el spinner en el boton correcto. */
+export type PendingAction = 'read' | 'delete' | null;
 
 export type CategoryCounts = Record<Category, { total: number; unread: number }>;
 

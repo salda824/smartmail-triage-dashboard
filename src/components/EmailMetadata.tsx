@@ -1,6 +1,6 @@
 import {
   AlertTriangle,
-  ArrowRightCircle,
+  ArrowRight,
   Banknote,
   Briefcase,
   CalendarClock,
@@ -9,209 +9,218 @@ import {
   Truck,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatDueDate } from '@/lib/utils';
+import { cn, formatDueDate } from '@/lib/utils';
 import type { Category, ExtractedData } from '@/types/email';
 
 /**
  * Datos extraidos del correo.
  *
- * Cada categoria muestra solo lo que le importa: montos y guias en finanzas,
- * motivo y accion en urgentes. Un campo vacio no se renderiza, para que la
- * ausencia de dato nunca se lea como un dato en blanco.
+ * Un campo vacio no se renderiza: la ausencia de dato nunca debe leerse como un
+ * dato en blanco. `MetaChips` va en la lista, `MetaPanel` en el panel de lectura.
  */
 
-interface Props {
-  category: Category;
-  data: ExtractedData;
-  /** `compact` se usa en la vista de lista, donde solo cabe una linea. */
-  variant?: 'card' | 'compact';
+/** Un envio trae guia o transportadora; su fecha es una entrega, no un plazo de pago. */
+function isShipment(data: ExtractedData): boolean {
+  return Boolean(data.trackingNumber || data.carrier);
 }
+
+function dueOf(data: ExtractedData) {
+  if (!data.dueDate) return null;
+  return formatDueDate(data.dueDate, { mode: isShipment(data) ? 'plain' : 'due' });
+}
+
+// ---------------------------------------------------------------------------
+// Chips compactos (lista)
+// ---------------------------------------------------------------------------
+
+export function MetaChips({ category, data }: { category: Category; data: ExtractedData }) {
+  const due = dueOf(data);
+  const chips: React.ReactNode[] = [];
+
+  if (data.amount) {
+    chips.push(
+      <Badge key="amount" tone="bg-accent-amber/12 text-accent-amber">
+        <Banknote size={10} />
+        {data.amount}
+      </Badge>,
+    );
+  }
+
+  if (due) {
+    chips.push(
+      <Badge
+        key="due"
+        tone={
+          due.tone === 'overdue'
+            ? 'bg-accent-red/12 text-accent-red'
+            : due.tone === 'soon'
+              ? 'bg-accent-amber/12 text-accent-amber'
+              : undefined
+        }
+      >
+        <CalendarClock size={10} />
+        {due.text}
+      </Badge>,
+    );
+  }
+
+  if (data.trackingNumber) {
+    chips.push(
+      <Badge key="track" tone="bg-accent-cyan/12 text-accent-cyan">
+        <Package size={10} />
+        {data.trackingNumber}
+      </Badge>,
+    );
+  }
+
+  if (category === 'URGENT' && data.urgencyReason) {
+    chips.push(
+      <Badge key="urgency" tone="bg-accent-red/12 text-accent-red" className="max-w-[18rem]">
+        <AlertTriangle size={10} />
+        <span className="truncate">{data.urgencyReason}</span>
+      </Badge>,
+    );
+  }
+
+  if (category === 'JOB' && data.role) {
+    chips.push(
+      <Badge key="role" tone="bg-accent-violet/12 text-accent-violet">
+        <Briefcase size={10} />
+        {data.role}
+      </Badge>,
+    );
+  }
+
+  if (chips.length === 0) return null;
+  return <div className="flex min-w-0 flex-wrap items-center gap-1">{chips}</div>;
+}
+
+// ---------------------------------------------------------------------------
+// Panel detallado (vista de lectura)
+// ---------------------------------------------------------------------------
 
 function Field({
   icon,
   label,
   value,
-  tone = 'default',
+  tone,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
-  tone?: 'default' | 'money' | 'overdue' | 'soon';
+  tone?: string;
 }) {
-  const valueTone =
-    tone === 'money'
-      ? 'text-orange-200'
-      : tone === 'overdue'
-        ? 'text-red-300'
-        : tone === 'soon'
-          ? 'text-orange-300'
-          : 'text-slate-200';
-
   return (
-    <div className="flex items-start gap-2">
-      <span className="mt-[3px] shrink-0 text-slate-500">{icon}</span>
+    <div className="flex items-start gap-2.5">
+      <span className="mt-[3px] shrink-0 text-text-3">{icon}</span>
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
-        <div className={`truncate text-xs font-medium ${valueTone}`}>{value}</div>
+        <div className="text-2xs uppercase tracking-wide text-text-3">{label}</div>
+        <div className={cn('text-[13px] font-medium', tone ?? 'text-text')}>{value}</div>
       </div>
     </div>
   );
 }
 
-export function EmailMetadata({ category, data, variant = 'card' }: Props) {
-  // Un correo con guia es un envio: su fecha es una entrega, no un plazo de pago.
-  const isShipment = Boolean(data.trackingNumber || data.carrier);
-  const due = data.dueDate
-    ? formatDueDate(data.dueDate, { mode: isShipment ? 'plain' : 'due' })
-    : null;
+export function MetaPanel({ category, data }: { category: Category; data: ExtractedData }) {
+  const due = dueOf(data);
+  const shipment = isShipment(data);
 
-  if (variant === 'compact') {
-    const chips: React.ReactNode[] = [];
-
-    if (data.amount) {
-      chips.push(
-        <Badge key="amount" variant="orange">
-          <Banknote size={11} />
-          {data.amount}
-        </Badge>,
-      );
-    }
-    if (due) {
-      chips.push(
-        <Badge key="due" variant={due.tone === 'overdue' ? 'coral' : due.tone === 'soon' ? 'orange' : 'outline'}>
-          <CalendarClock size={11} />
-          {due.text}
-        </Badge>,
-      );
-    }
-    if (data.trackingNumber) {
-      chips.push(
-        <Badge key="tracking" variant="cyan">
-          <Package size={11} />
-          {data.trackingNumber}
-        </Badge>,
-      );
-    }
-    if (category === 'URGENT' && data.urgencyReason) {
-      chips.push(
-        <Badge key="urgency" variant="coral" className="max-w-[22rem]">
-          <AlertTriangle size={11} />
-          <span className="truncate">{data.urgencyReason}</span>
-        </Badge>,
-      );
-    }
-    if (category === 'JOB' && data.role) {
-      chips.push(
-        <Badge key="role" variant="violet">
-          <Briefcase size={11} />
-          {data.role}
-        </Badge>,
-      );
-    }
-
-    if (chips.length === 0) return null;
-    return <div className="flex flex-wrap items-center gap-1.5">{chips}</div>;
-  }
-
-  // --- Vista de tarjeta ---------------------------------------------------
+  const fields: React.ReactNode[] = [];
 
   if (category === 'URGENT') {
-    if (!data.urgencyReason && !data.actionNeeded && !due) return null;
-    return (
-      <div className="mt-3 space-y-2 rounded-lg border border-accent-coral/20 bg-accent-coral/[0.06] p-3">
-        {data.urgencyReason && (
-          <Field
-            icon={<AlertTriangle size={13} />}
-            label="Motivo"
-            value={data.urgencyReason}
-          />
-        )}
-        {data.actionNeeded && (
-          <Field
-            icon={<ArrowRightCircle size={13} />}
-            label="Accion recomendada"
-            value={data.actionNeeded}
-          />
-        )}
-        {due && (
-          <Field
-            icon={<CalendarClock size={13} />}
-            label="Fecha limite"
-            value={due.text}
-            tone={due.tone === 'normal' ? 'default' : due.tone}
-          />
-        )}
-      </div>
-    );
+    if (data.urgencyReason) {
+      fields.push(
+        <Field
+          key="reason"
+          icon={<AlertTriangle size={13} />}
+          label="Motivo"
+          value={data.urgencyReason}
+          tone="text-accent-red"
+        />,
+      );
+    }
+    if (data.actionNeeded) {
+      fields.push(
+        <Field
+          key="action"
+          icon={<ArrowRight size={13} />}
+          label="Accion recomendada"
+          value={data.actionNeeded}
+        />,
+      );
+    }
   }
 
-  if (category === 'FINANCE') {
-    const hasAny =
-      data.amount || due || data.trackingNumber || data.carrier || data.merchant;
-    if (!hasAny) return null;
-
-    // Cuando el comercio y la transportadora son el mismo (Servientrega
-    // notificando su propio envio) no tiene sentido mostrarlo dos veces.
-    const showMerchant = data.merchant && data.merchant !== data.carrier;
-
-    return (
-      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border border-accent-orange/20 bg-accent-orange/[0.06] p-3">
-        {data.amount && (
-          <Field icon={<Banknote size={13} />} label="Monto" value={data.amount} tone="money" />
-        )}
-        {due && (
-          <Field
-            icon={<CalendarClock size={13} />}
-            label={isShipment ? 'Entrega estimada' : 'Vencimiento'}
-            value={due.text}
-            tone={isShipment || due.tone === 'normal' ? 'default' : due.tone}
-          />
-        )}
-        {showMerchant && (
-          <Field icon={<Store size={13} />} label="Comercio" value={data.merchant!} />
-        )}
-        {data.carrier && (
-          <Field icon={<Truck size={13} />} label="Transportadora" value={data.carrier} />
-        )}
-        {data.trackingNumber && (
-          <Field
-            icon={<Package size={13} />}
-            label="Guia / rastreo"
-            value={data.trackingNumber}
-          />
-        )}
-      </div>
-    );
-  }
-
-  if (category === 'JOB') {
-    if (!data.role && !data.company && !due) return null;
-    return (
-      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border border-accent-violet/20 bg-accent-violet/[0.06] p-3">
-        {data.role && <Field icon={<Briefcase size={13} />} label="Cargo" value={data.role} />}
-        {data.company && <Field icon={<Store size={13} />} label="Empresa" value={data.company} />}
-        {due && (
-          <Field
-            icon={<CalendarClock size={13} />}
-            label="Fecha clave"
-            value={due.text}
-            tone={due.tone === 'normal' ? 'default' : due.tone}
-          />
-        )}
-      </div>
+  if (data.amount) {
+    fields.push(
+      <Field
+        key="amount"
+        icon={<Banknote size={13} />}
+        label="Monto"
+        value={data.amount}
+        tone="text-accent-amber"
+      />,
     );
   }
 
   if (due) {
-    return (
-      <div className="mt-3">
-        <Badge variant={due.tone === 'overdue' ? 'coral' : due.tone === 'soon' ? 'orange' : 'outline'}>
-          <CalendarClock size={11} />
-          {due.text}
-        </Badge>
-      </div>
+    fields.push(
+      <Field
+        key="due"
+        icon={<CalendarClock size={13} />}
+        label={shipment ? 'Entrega estimada' : category === 'JOB' ? 'Fecha clave' : 'Vencimiento'}
+        value={due.text}
+        tone={
+          !shipment && due.tone === 'overdue'
+            ? 'text-accent-red'
+            : !shipment && due.tone === 'soon'
+              ? 'text-accent-amber'
+              : undefined
+        }
+      />,
     );
   }
 
-  return null;
+  if (data.role) {
+    fields.push(
+      <Field key="role" icon={<Briefcase size={13} />} label="Cargo" value={data.role} />,
+    );
+  }
+
+  const org = data.company ?? (data.merchant !== data.carrier ? data.merchant : undefined);
+  if (org) {
+    fields.push(
+      <Field
+        key="org"
+        icon={<Store size={13} />}
+        label={category === 'JOB' ? 'Empresa' : 'Comercio'}
+        value={org}
+      />,
+    );
+  }
+
+  if (data.carrier) {
+    fields.push(
+      <Field key="carrier" icon={<Truck size={13} />} label="Transportadora" value={data.carrier} />,
+    );
+  }
+
+  if (data.trackingNumber) {
+    fields.push(
+      <Field
+        key="track"
+        icon={<Package size={13} />}
+        label="Guia / rastreo"
+        value={data.trackingNumber}
+      />,
+    );
+  }
+
+  if (fields.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg border border-line bg-surface-2 p-3.5">
+      {fields}
+    </div>
+  );
 }

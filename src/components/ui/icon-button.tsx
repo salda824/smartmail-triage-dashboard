@@ -3,23 +3,31 @@
 import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
-type Tone = 'neutral' | 'emerald' | 'coral' | 'blue';
+type Tone = 'neutral' | 'green' | 'red' | 'accent';
+type Size = 'sm' | 'md';
 
 const TONES: Record<Tone, string> = {
-  neutral: 'text-slate-400 hover:bg-white/10 hover:text-slate-100',
-  emerald: 'text-slate-400 hover:bg-accent-emerald/15 hover:text-emerald-300',
-  coral: 'text-slate-400 hover:bg-accent-coral/15 hover:text-red-300',
-  blue: 'text-slate-400 hover:bg-accent-blue/15 hover:text-blue-300',
+  neutral: 'text-text-3 hover:bg-surface-3 hover:text-text',
+  green: 'text-text-3 hover:bg-accent-green/12 hover:text-accent-green',
+  red: 'text-text-3 hover:bg-accent-red/12 hover:text-accent-red',
+  accent: 'text-text-3 hover:bg-accent/12 hover:text-accent',
+};
+
+const SIZES: Record<Size, string> = {
+  sm: 'h-7 w-7 rounded-md',
+  md: 'h-8 w-8 rounded-lg',
 };
 
 export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   tone?: Tone;
+  size?: Size;
   /** Obligatorio: el boton solo muestra un icono, sin texto visible. */
   label: string;
+  active?: boolean;
 }
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
-  { tone = 'neutral', label, className, children, ...props },
+  { tone = 'neutral', size = 'md', label, active, className, children, ...props },
   ref,
 ) {
   return (
@@ -29,9 +37,11 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       aria-label={label}
       title={label}
       className={cn(
-        'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150',
+        'inline-flex shrink-0 items-center justify-center transition-colors duration-150',
         'disabled:cursor-not-allowed disabled:opacity-50',
         TONES[tone],
+        SIZES[size],
+        active && 'bg-surface-3 text-text',
         className,
       )}
       {...props}

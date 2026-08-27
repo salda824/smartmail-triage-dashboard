@@ -11,13 +11,13 @@ export interface ToastMessage {
 }
 
 const TONES = {
-  success: { ring: 'ring-accent-emerald/30', text: 'text-emerald-300', Icon: CheckCircle2 },
-  error: { ring: 'ring-accent-coral/30', text: 'text-red-300', Icon: AlertTriangle },
-  info: { ring: 'ring-accent-blue/30', text: 'text-blue-300', Icon: Info },
+  success: { color: 'text-accent-green', Icon: CheckCircle2 },
+  error: { color: 'text-accent-red', Icon: AlertTriangle },
+  info: { color: 'text-accent', Icon: Info },
 } as const;
 
 function Toast({ toast, onDismiss }: { toast: ToastMessage; onDismiss: (id: number) => void }) {
-  const { ring, text, Icon } = TONES[toast.tone];
+  const { color, Icon } = TONES[toast.tone];
 
   // Los errores se quedan hasta que el usuario los cierre; los avisos se van solos.
   useEffect(() => {
@@ -29,20 +29,17 @@ function Toast({ toast, onDismiss }: { toast: ToastMessage; onDismiss: (id: numb
   return (
     <div
       role="status"
-      className={cn(
-        'animate-fade-up flex items-start gap-2.5 rounded-lg bg-midnight-800 px-3.5 py-2.5 shadow-card ring-1 ring-inset',
-        ring,
-      )}
+      className="flex animate-slide-up items-start gap-2.5 rounded-lg border border-line bg-surface px-3.5 py-2.5 shadow-pop"
     >
-      <Icon size={15} className={cn('mt-0.5 shrink-0', text)} />
-      <p className="flex-1 text-xs leading-relaxed text-slate-300">{toast.text}</p>
+      <Icon size={14} className={cn('mt-0.5 shrink-0', color)} />
+      <p className="flex-1 text-xs leading-relaxed text-text-2">{toast.text}</p>
       <button
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Cerrar aviso"
-        className="shrink-0 rounded p-0.5 text-slate-500 hover:text-slate-200"
+        className="shrink-0 rounded p-0.5 text-text-3 transition-colors hover:text-text"
       >
-        <X size={13} />
+        <X size={12} />
       </button>
     </div>
   );
@@ -60,7 +57,7 @@ export function ToastStack({
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2"
+      className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2"
     >
       {toasts.map((toast) => (
         <div key={toast.id} className="pointer-events-auto">

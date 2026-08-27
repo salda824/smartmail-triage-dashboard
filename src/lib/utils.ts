@@ -11,6 +11,29 @@ export function gmailUrl(messageId: string): string {
   return `https://mail.google.com/mail/u/0/#inbox/${messageId}`;
 }
 
+/**
+ * Meses en espanol, escritos a mano a proposito.
+ *
+ * `toLocaleDateString` depende de los datos ICU del entorno, y Node y el
+ * navegador no siempre coinciden (uno escribe "sept", el otro "sep."). Como
+ * estas fechas se pintan en el servidor y se rehidratan en el cliente, esa
+ * diferencia rompia la hidratacion. Formateando a mano el resultado es
+ * identico en ambos lados.
+ */
+const MONTHS_SHORT = [
+  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+];
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** "27 ago" — determinista, sirve como valor estable antes de hidratar. */
+export function shortDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
+}
+
 /** "hace 5 min", "hace 3 h", "hace 2 d"; a partir de una semana muestra la fecha. */
 export function relativeTime(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
@@ -28,20 +51,16 @@ export function relativeTime(iso: string, now: Date = new Date()): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `hace ${days} d`;
 
-  return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+  return `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`;
 }
 
 /** Fecha y hora completas para tooltips y el sello de ultima sincronizacion. */
 export function fullDateTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return `${pad(date.getDate())} ${MONTHS_SHORT[date.getMonth()]} ${date.getFullYear()}, ${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
 }
 
 /**
@@ -72,7 +91,7 @@ export function formatDueDate(
   const startOfToday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12);
   const days = Math.round((date.getTime() - startOfToday) / 86_400_000);
 
-  const label = date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const label = `${date.getUTCDate()} ${MONTHS_SHORT[date.getUTCMonth()]}`;
 
   if (mode === 'plain') {
     if (days < 0) return { text: label, tone: 'normal' };
