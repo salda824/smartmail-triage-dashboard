@@ -1,0 +1,48 @@
+# dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# build
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+
+# base de datos local (cache de correos: contiene datos personales)
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# credenciales y tokens de Gmail
+.env
+.env.local
+.env*.local
+credentials.json
+token.json
+.gmail-token.json
+gmail-token.json
+*-token.json
+*.pem
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# sistema operativo / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# vercel
+.vercel

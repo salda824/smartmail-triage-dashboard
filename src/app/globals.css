@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Pila del sistema: evita depender de una descarga de fuentes en build. */
+    --font-sans: 'Inter', 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system,
+      'Helvetica Neue', Arial, sans-serif;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-midnight-900 text-slate-200 antialiased;
+    font-family: var(--font-sans);
+    /* Halos de color muy tenues: dan profundidad sin competir con el contenido. */
+    background-image:
+      radial-gradient(60rem 40rem at 15% -10%, rgba(59, 130, 246, 0.10), transparent 60%),
+      radial-gradient(50rem 35rem at 90% 0%, rgba(139, 92, 246, 0.10), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    @apply bg-accent-blue/30 text-white;
+  }
+
+  /* Scrollbar acorde al tema oscuro (WebKit) */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-midnight-600;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-midnight-500;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent-blue/70 ring-offset-2 ring-offset-midnight-900;
+  }
+}
+
+@layer components {
+  /* Superficie base de tarjetas y paneles. */
+  .surface {
+    @apply rounded-xl border border-white/[0.07] bg-midnight-800/70 backdrop-blur-sm;
+  }
+
+  .surface-hover {
+    @apply transition-colors duration-200 hover:border-white/[0.14] hover:bg-midnight-750/80;
+  }
+
+  /* Placeholder de carga. */
+  .skeleton {
+    @apply rounded bg-midnight-700;
+    background-image: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 800px 100%;
+    @apply animate-shimmer;
+  }
+}
+
+@layer utilities {
+  /* Recorte a N lineas sin plugin externo. */
+  .line-clamp-1,
+  .line-clamp-2,
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-1 {
+    -webkit-line-clamp: 1;
+  }
+  .line-clamp-2 {
+    -webkit-line-clamp: 2;
+  }
+  .line-clamp-3 {
+    -webkit-line-clamp: 3;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-shimmer,
+    .animate-fade-up {
+      animation: none !important;
+    }
+  }
+}
