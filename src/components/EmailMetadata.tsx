@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatDueDate } from '@/lib/utils';
-import type { Category, ExtractedData } from '@/types/email';
+import { CATEGORY_META, type Category, type ExtractedData } from '@/types/email';
 
 /**
  * Datos extraidos del correo.
@@ -93,6 +93,91 @@ export function MetaChips({ category, data }: { category: Category; data: Extrac
 
   if (chips.length === 0) return null;
   return <div className="flex min-w-0 flex-wrap items-center gap-1">{chips}</div>;
+}
+
+// ---------------------------------------------------------------------------
+// Filas etiqueta-valor (tarjetas)
+// ---------------------------------------------------------------------------
+
+interface Row {
+  label: string;
+  value: string;
+  tone?: string;
+}
+
+/** Construye las filas relevantes segun la categoria. Comun a tarjeta y panel. */
+function buildRows(category: Category, data: ExtractedData): Row[] {
+  const due = dueOf(data);
+  const shipment = isShipment(data);
+  const rows: Row[] = [];
+
+  if (category === 'URGENT') {
+    if (data.urgencyReason) rows.push({ label: 'Motivo', value: data.urgencyReason, tone: 'text-accent-red' });
+    if (data.actionNeeded) rows.push({ label: 'Accion', value: data.actionNeeded });
+  }
+
+  if (data.amount) rows.push({ label: 'Monto', value: data.amount, tone: 'text-accent-amber' });
+
+  if (due) {
+    rows.push({
+      label: shipment ? 'Entrega' : category === 'JOB' ? 'Fecha clave' : 'Vencimiento',
+      value: due.text,
+      tone: shipment
+        ? undefined
+        : due.tone === 'overdue'
+          ? 'text-accent-red'
+          : due.tone === 'soon'
+            ? 'text-accent-amber'
+            : undefined,
+    });
+  }
+
+  if (data.role) rows.push({ label: 'Cargo', value: data.role });
+
+  const org = data.company ?? (data.merchant !== data.carrier ? data.merchant : undefined);
+  if (org) rows.push({ label: category === 'JOB' ? 'Empresa' : 'Comercio', value: org });
+
+  if (data.carrier) rows.push({ label: 'Transportadora', value: data.carrier });
+  if (data.trackingNumber) rows.push({ label: 'Guia', value: data.trackingNumber, tone: 'text-accent-cyan' });
+
+  return rows;
+}
+
+/**
+ * Recuadro de datos extraidos para la tarjeta: etiqueta a la izquierda, valor
+ * a la derecha, tenido con el color de la categoria. Se limita a cuatro filas
+ * para que todas las tarjetas de la cuadricula conserven una altura pareja.
+ */
+export function MetaRows({
+  category,
+  data,
+  max = 4,
+}: {
+  category: Category;
+  data: ExtractedData;
+  max?: number;
+}) {
+  const rows = buildRows(category, data);
+  if (rows.length === 0) return null;
+
+  const shown = rows.slice(0, max);
+  const meta = CATEGORY_META[category];
+
+  return (
+    <div className={cn('mt-3 space-y-1.5 rounded-lg border px-3 py-2.5', meta.panel)}>
+      {shown.map((row) => (
+        <div key={row.label} className="flex items-baseline justify-between gap-3 text-xs">
+          <span className="shrink-0 text-text-3">{row.label}</span>
+          <span className={cn('truncate text-right font-medium', row.tone ?? 'text-text')}>
+            {row.value}
+          </span>
+        </div>
+      ))}
+      {rows.length > max && (
+        <div className="pt-0.5 text-2xs text-text-3">+{rows.length - max} dato(s) mas</div>
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------

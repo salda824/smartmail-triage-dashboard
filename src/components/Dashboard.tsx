@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Inbox, SearchX } from 'lucide-react';
+import { EmailCard } from '@/components/EmailCard';
 import { EmailDetail } from '@/components/EmailDetail';
 import { EmailListItem } from '@/components/EmailListItem';
-import { Sidebar, type TabId } from '@/components/Sidebar';
+import { Pagination } from '@/components/Pagination';
+import { Sidebar, type TabId, type ViewMode } from '@/components/Sidebar';
 import { Toolbar, type Density } from '@/components/Toolbar';
 import { ToastStack, type ToastMessage } from '@/components/Toast';
 import {
@@ -24,6 +26,8 @@ interface Props {
 const STORAGE = {
   density: 'smartmail:density',
   detail: 'smartmail:detail',
+  view: 'smartmail:view',
+  pageSize: 'smartmail:pageSize',
 } as const;
 
 function emptyCounts(): CategoryCounts {
@@ -44,6 +48,9 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
   const [density, setDensity] = useState<Density>('comfortable');
   const [detailOpen, setDetailOpen] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<ViewMode>('cards');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
 
   const [syncing, setSyncing] = useState(false);
   const [pending, setPending] = useState<Record<string, PendingAction>>({});
@@ -68,9 +75,28 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
       if (d === 'comfortable' || d === 'compact') setDensity(d);
       const p = window.localStorage.getItem(STORAGE.detail);
       if (p === '0') setDetailOpen(false);
+      const v = window.localStorage.getItem(STORAGE.view);
+      if (v === 'cards' || v === 'list') setView(v);
+      const s = Number(window.localStorage.getItem(STORAGE.pageSize));
+      if ([6, 12, 24, 48].includes(s)) setPageSize(s);
     } catch {
       // Almacenamiento bloqueado: se usan los valores por defecto.
     }
+  }, []);
+
+  const changeView = useCallback((value: ViewMode) => {
+    setView(value);
+    try {
+      window.localStorage.setItem(STORAGE.view, value);
+    } catch {}
+  }, []);
+
+  const changePageSize = useCallback((value: number) => {
+    setPageSize(value);
+    setPage(1);
+    try {
+      window.localStorage.setItem(STORAGE.pageSize, String(value));
+    } catch {}
   }, []);
 
   const changeDensity = useCallback((value: Density) => {
@@ -113,6 +139,24 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
       );
     });
   }, [emails, tab, unreadOnly, search]);
+
+  // Paginacion: solo en tarjetas. La lista mantiene su scroll continuo, que es
+  // lo que se espera al recorrer la bandeja con el teclado.
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const paged = useMemo(() => {
+    if (view === 'list') return visible;
+    const start = (page - 1) * pageSize;
+    return visible.slice(start, start + pageSize);
+  }, [visible, view, page, pageSize]);
+
+  // Cambiar de filtro debe devolver a la primera pagina, o se queda en una vacia.
+  useEffect(() => {
+    setPage(1);
+  }, [tab, search, unreadOnly]);
+
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
   const selected = useMemo(
     () => visible.find((e) => e.id === selectedId) ?? null,
@@ -357,10 +401,10 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
         counts={counts}
         totals={totals}
         lastSyncAt={stats.lastSyncAt}
-        syncing={syncing}
         source={source}
+        view={view}
         onChange={setTab}
-        onSync={handleSync}
+        onViewChange={changeView}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -368,6 +412,7 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
           tab={tab}
           visibleCount={visible.length}
           totalCount={emails.length}
+          unreadCount={totals.unread}
           search={search}
           onSearchChange={setSearch}
           unreadOnly={unreadOnly}
@@ -376,49 +421,81 @@ export function Dashboard({ initialEmails, initialStats, initialSource }: Props)
           onDensityChange={changeDensity}
           detailOpen={detailOpen}
           onToggleDetail={toggleDetail}
+          view={view}
+          syncing={syncing}
+          onSync={handleSync}
         />
 
-        <div className="flex min-h-0 flex-1">
-          {/* Panel de lista: scroll propio */}
-          <div
-            ref={listRef}
-            role="listbox"
-            aria-label="Correos"
-            className={cnList(detailOpen)}
-          >
-            {visible.length === 0 ? (
-              <EmptyState
-                hasFilters={Boolean(search) || unreadOnly || tab !== 'ALL'}
-                total={emails.length}
-              />
-            ) : (
-              visible.map((email) => (
-                <EmailListItem
-                  key={email.id}
-                  email={email}
-                  selected={email.id === selectedId}
-                  density={density}
-                  pending={pending[email.id] ?? null}
-                  onSelect={(e) => setSelectedId(e.id)}
+        {view === 'cards' ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {visible.length === 0 ? (
+                <EmptyState
+                  hasFilters={Boolean(search) || unreadOnly || tab !== 'ALL'}
+                  total={emails.length}
+                />
+              ) : (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {paged.map((email) => (
+                    <EmailCard
+                      key={email.id}
+                      email={email}
+                      pending={pending[email.id] ?? null}
+                      onToggleRead={handleToggleRead}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Pagination
+              page={page}
+              pageCount={pageCount}
+              pageSize={pageSize}
+              total={visible.length}
+              onPageChange={setPage}
+              onPageSizeChange={changePageSize}
+            />
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1">
+            {/* Panel de lista: scroll propio */}
+            <div ref={listRef} role="listbox" aria-label="Correos" className={cnList(detailOpen)}>
+              {visible.length === 0 ? (
+                <EmptyState
+                  hasFilters={Boolean(search) || unreadOnly || tab !== 'ALL'}
+                  total={emails.length}
+                />
+              ) : (
+                visible.map((email) => (
+                  <EmailListItem
+                    key={email.id}
+                    email={email}
+                    selected={email.id === selectedId}
+                    density={density}
+                    pending={pending[email.id] ?? null}
+                    onSelect={(e) => setSelectedId(e.id)}
+                    onToggleRead={handleToggleRead}
+                    onDelete={handleDelete}
+                  />
+                ))
+              )}
+            </div>
+
+            {/* Panel de lectura: scroll propio */}
+            {detailOpen && (
+              <div className="hidden min-w-0 flex-1 border-l border-line bg-surface lg:block">
+                <EmailDetail
+                  email={selected}
+                  pending={selected ? (pending[selected.id] ?? null) : null}
                   onToggleRead={handleToggleRead}
                   onDelete={handleDelete}
                 />
-              ))
+              </div>
             )}
           </div>
-
-          {/* Panel de lectura: scroll propio */}
-          {detailOpen && (
-            <div className="hidden min-w-0 flex-1 border-l border-line bg-surface lg:block">
-              <EmailDetail
-                email={selected}
-                pending={selected ? (pending[selected.id] ?? null) : null}
-                onToggleRead={handleToggleRead}
-                onDelete={handleDelete}
-              />
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />

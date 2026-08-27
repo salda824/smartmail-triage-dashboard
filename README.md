@@ -405,9 +405,13 @@ página nunca hace scroll. El desplazamiento vive dentro de cada panel.
 └──────────┴──────────────────────┴──────────────────────┘
 ```
 
-- **Dos densidades**: cómoda (remitente, asunto, extracto y datos extraídos) y
-  compacta (una línea por correo, ~16 visibles a la vez).
-- **Panel de lectura** plegable, con los datos extraídos y el cuerpo en texto.
+Hay **dos vistas**, conmutables desde la barra lateral:
+
+- **Tarjetas** (por defecto): cuadrícula responsiva con el recuadro de datos
+  extraídos teñido según la categoría, y **paginación** al pie — 6, 12, 24 o 48
+  por página. Sin scroll infinito.
+- **Lista**: filas compactas con panel de lectura al lado, pensada para recorrer
+  la bandeja con el teclado. Dos densidades: cómoda y compacta (~16 visibles).
 - **Tema claro y oscuro**, con conmutador en la barra lateral. La preferencia se
   guarda y se aplica antes de la primera pintura, así que no hay destello.
 
@@ -440,6 +444,11 @@ Error: EBUSY: resource busy or locked, open '.next\static\chunks\app\page.js'
 
 OneDrive bloquea cada archivo mientras lo sube, y Next.js reescribe los chunks
 de `.next` en cada recompilación. Los dos se pelean por el mismo archivo.
+
+> **Aparte pero relacionado:** no ejecutes `npm run build` con `npm run dev`
+> corriendo. Ambos escriben en `.next`, y el build de producción deja al
+> servidor de desarrollo sirviendo un CSS vacío — la página se ve como HTML sin
+> estilos. Si te pasa: para el servidor, borra `.next` y vuelve a arrancarlo.
 
 Se probaron dos atajos y **ninguno funciona**, por si tienes la tentación:
 

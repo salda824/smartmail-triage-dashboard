@@ -41,6 +41,9 @@ const config: Config = {
         panel: 'var(--shadow)',
         // Elevacion para menus y popovers, sin resplandor de color.
         pop: '0 4px 8px -2px rgba(0,0,0,0.28), 0 16px 40px -12px rgba(0,0,0,0.45)',
+        // Halo del boton principal. Discreto a proposito: un resplandor fuerte
+        // en cada elemento fue justo lo que hacia agresiva la version anterior.
+        glow: '0 2px 10px -2px rgb(var(--accent) / 0.45)',
       },
       fontFamily: {
         sans: ['var(--font-sans)'],

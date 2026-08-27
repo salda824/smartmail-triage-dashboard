@@ -13,17 +13,31 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number];
 
+/** Nombre del icono de lucide-react que representa la categoria. */
+export type CategoryIcon =
+  | 'briefcase'
+  | 'alert'
+  | 'card'
+  | 'news'
+  | 'bulb'
+  | 'package';
+
 export interface CategoryMeta {
   id: Category;
   label: string;
   /** Etiqueta corta para la barra lateral cuando el espacio aprieta. */
   short: string;
+  icon: CategoryIcon;
   /** Clases Tailwind del punto/indicador de color. */
   dot: string;
   /** Clases del badge (fondo + texto). */
   badge: string;
   /** Clase de color de texto suelta, para iconos. */
   text: string;
+  /** Fondo tenue + borde, para el recuadro de datos extraidos. */
+  panel: string;
+  /** Fondo del icono en la pastilla de categoria. */
+  chip: string;
   description: string;
 }
 
@@ -32,54 +46,72 @@ export const CATEGORY_META: Record<Category, CategoryMeta> = {
     id: 'JOB',
     label: 'Ofertas de Empleo',
     short: 'Empleo',
+    icon: 'briefcase',
     dot: 'bg-accent-violet',
     badge: 'bg-accent-violet/12 text-accent-violet',
     text: 'text-accent-violet',
+    panel: 'border-accent-violet/20 bg-accent-violet/[0.07]',
+    chip: 'bg-accent-violet/12 text-accent-violet ring-accent-violet/25',
     description: 'Vacantes, practicas y procesos de seleccion',
   },
   URGENT: {
     id: 'URGENT',
     label: 'Urgente',
     short: 'Urgente',
+    icon: 'alert',
     dot: 'bg-accent-red',
     badge: 'bg-accent-red/12 text-accent-red',
     text: 'text-accent-red',
+    panel: 'border-accent-red/20 bg-accent-red/[0.07]',
+    chip: 'bg-accent-red/12 text-accent-red ring-accent-red/25',
     description: 'Requiere accion o respuesta inmediata',
   },
   FINANCE: {
     id: 'FINANCE',
     label: 'Pagos y Envios',
     short: 'Pagos',
+    icon: 'card',
     dot: 'bg-accent-amber',
     badge: 'bg-accent-amber/12 text-accent-amber',
     text: 'text-accent-amber',
+    panel: 'border-accent-amber/20 bg-accent-amber/[0.07]',
+    chip: 'bg-accent-amber/12 text-accent-amber ring-accent-amber/25',
     description: 'Facturas, compras, bancos y paqueteria',
   },
   NEWS: {
     id: 'NEWS',
     label: 'Noticias',
     short: 'Noticias',
+    icon: 'news',
     dot: 'bg-accent',
     badge: 'bg-accent/12 text-accent',
     text: 'text-accent',
+    panel: 'border-accent/20 bg-accent/[0.07]',
+    chip: 'bg-accent/12 text-accent ring-accent/25',
     description: 'Newsletters y resumenes del sector',
   },
   INTERESTING: {
     id: 'INTERESTING',
     label: 'Interesantes',
     short: 'Lecturas',
+    icon: 'bulb',
     dot: 'bg-accent-cyan',
     badge: 'bg-accent-cyan/12 text-accent-cyan',
     text: 'text-accent-cyan',
+    panel: 'border-accent-cyan/20 bg-accent-cyan/[0.07]',
+    chip: 'bg-accent-cyan/12 text-accent-cyan ring-accent-cyan/25',
     description: 'Lecturas, webinars y recursos',
   },
   GENERAL: {
     id: 'GENERAL',
     label: 'General',
     short: 'General',
+    icon: 'package',
     dot: 'bg-text-3',
     badge: 'bg-text-3/12 text-text-2',
     text: 'text-text-3',
+    panel: 'border-line bg-surface-2',
+    chip: 'bg-text-3/12 text-text-2 ring-line-strong',
     description: 'Todo lo demas',
   },
 };

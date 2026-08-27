@@ -1,14 +1,14 @@
 'use client';
 
-import { Inbox, Loader2, Pin, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Dot } from '@/components/ui/badge';
+import { Inbox, LayoutGrid, List, Pin } from 'lucide-react';
+import { CategoryIcon } from '@/components/CategoryIcon';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { TimeAgo } from '@/components/TimeAgo';
 import { cn } from '@/lib/utils';
 import { CATEGORY_META, type Category, type CategoryCounts } from '@/types/email';
 
 export type TabId = Category | 'ALL';
+export type ViewMode = 'cards' | 'list';
 
 /**
  * Empleo va primero y fijo: es la categoria de mayor prioridad para el usuario,
@@ -21,32 +21,32 @@ interface Props {
   counts: CategoryCounts;
   totals: { total: number; unread: number };
   lastSyncAt: string | null;
-  syncing: boolean;
   source: string;
+  view: ViewMode;
   onChange: (tab: TabId) => void;
-  onSync: () => void;
+  onViewChange: (view: ViewMode) => void;
 }
 
 function NavItem({
   label,
   count,
   unread,
-  dot,
   active,
   pinned,
   onClick,
   title,
   icon,
+  accent,
 }: {
   label: string;
   count: number;
   unread: number;
-  dot?: string;
   active: boolean;
   pinned?: boolean;
   onClick: () => void;
   title?: string;
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
+  accent?: string;
 }) {
   return (
     <button
@@ -55,23 +55,29 @@ function NavItem({
       title={title}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] transition-colors duration-150',
-        active
-          ? 'bg-surface-3 font-medium text-text'
-          : 'text-text-2 hover:bg-surface-2 hover:text-text',
+        'group relative flex w-full items-center gap-2.5 rounded-lg py-2 pl-2.5 pr-2 text-[13px] transition-colors duration-150',
+        active ? 'bg-surface-2 font-medium text-text' : 'text-text-2 hover:bg-surface-2/60 hover:text-text',
       )}
     >
-      {icon ?? <Dot className={cn(dot, !active && 'opacity-70 group-hover:opacity-100')} />}
+      {/* Marca de seleccion en el borde, mas discreta que teñir toda la fila. */}
+      {active && (
+        <span aria-hidden className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent" />
+      )}
+
+      <span className={cn('shrink-0', active ? accent ?? 'text-accent' : 'text-text-3')}>
+        {icon}
+      </span>
 
       <span className="flex-1 truncate text-left">{label}</span>
 
-      {pinned && <Pin size={11} className="shrink-0 text-text-3" aria-label="Fija" />}
+      {pinned && <Pin size={10} className="shrink-0 text-text-3" aria-label="Fija" />}
 
-      {/* Se muestra el numero de no leidos; si no hay, el total en gris. */}
       <span
         className={cn(
-          'shrink-0 tabular-nums',
-          unread > 0 ? 'text-xs font-medium text-text' : 'text-2xs text-text-3',
+          'shrink-0 rounded px-1 tabular-nums',
+          unread > 0
+            ? 'bg-accent/15 text-2xs font-semibold text-accent'
+            : 'text-2xs text-text-3',
         )}
       >
         {unread > 0 ? unread : count || ''}
@@ -85,17 +91,17 @@ export function Sidebar({
   counts,
   totals,
   lastSyncAt,
-  syncing,
   source,
+  view,
   onChange,
-  onSync,
+  onViewChange,
 }: Props) {
   return (
     <aside className="flex h-full w-sidebar shrink-0 flex-col border-r border-line bg-surface">
       {/* Marca */}
-      <div className="flex h-toolbar items-center gap-2.5 px-4">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-white">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <div className="flex items-center gap-2.5 px-4 py-4">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-violet text-white shadow-glow">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path
               d="M3 7.5 12 13l9-5.5M4.5 5h15A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11A1.5 1.5 0 0 1 4.5 5Z"
               stroke="currentColor"
@@ -106,23 +112,23 @@ export function Sidebar({
           </svg>
         </span>
         <div className="min-w-0 leading-tight">
-          <div className="truncate text-[13px] font-semibold tracking-tight">SmartMail</div>
-          <div className="truncate text-2xs text-text-3">Triage</div>
+          <div className="truncate text-sm font-semibold tracking-tight">SmartMail Triage</div>
+          <div className="truncate text-2xs text-text-3">Tu bandeja, ordenada</div>
         </div>
       </div>
 
       {/* Navegacion */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2" aria-label="Categorias">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2" aria-label="Categorias">
         <NavItem
           label="Todos"
-          icon={<Inbox size={14} className="shrink-0 text-text-3" />}
+          icon={<Inbox size={15} />}
           count={totals.total}
           unread={totals.unread}
           active={active === 'ALL'}
           onClick={() => onChange('ALL')}
         />
 
-        <div className="px-2.5 pb-1 pt-4 text-2xs font-medium uppercase tracking-wider text-text-3">
+        <div className="px-2.5 pb-1 pt-5 text-2xs font-medium uppercase tracking-wider text-text-3">
           Categorias
         </div>
 
@@ -134,7 +140,8 @@ export function Sidebar({
               key={id}
               label={meta.label}
               title={meta.description}
-              dot={meta.dot}
+              icon={<CategoryIcon name={meta.icon} size={15} />}
+              accent={meta.text}
               count={c.total}
               unread={c.unread}
               active={active === id}
@@ -143,41 +150,54 @@ export function Sidebar({
             />
           );
         })}
+
+        <div className="px-2.5 pb-1.5 pt-5 text-2xs font-medium uppercase tracking-wider text-text-3">
+          Vista
+        </div>
+
+        <div className="flex gap-1 px-0.5">
+          {(
+            [
+              { id: 'cards', label: 'Tarjetas', Icon: LayoutGrid },
+              { id: 'list', label: 'Lista', Icon: List },
+            ] as const
+          ).map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onViewChange(id)}
+              aria-pressed={view === id}
+              className={cn(
+                'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-2xs font-medium transition-colors duration-150',
+                view === id
+                  ? 'bg-surface-3 text-text'
+                  : 'text-text-3 hover:bg-surface-2 hover:text-text-2',
+              )}
+            >
+              <Icon size={13} />
+              {label}
+            </button>
+          ))}
+        </div>
       </nav>
 
-      {/* Pie: sincronizacion y tema */}
-      <div className="space-y-2.5 border-t border-line p-3">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={onSync}
-          disabled={syncing}
-          className="w-full"
-        >
-          {syncing ? (
-            <Loader2 size={13} className="animate-spin" />
-          ) : (
-            <RefreshCw size={13} />
-          )}
-          {syncing ? 'Sincronizando' : 'Sincronizar'}
-        </Button>
-
-        <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 leading-tight">
-            <div className="truncate text-2xs text-text-3">
-              {lastSyncAt ? (
-                <TimeAgo iso={lastSyncAt} prefix="Sync " />
-              ) : (
-                'Sin sincronizar'
+      {/* Pie: origen de datos y tema */}
+      <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2.5">
+        <div className="min-w-0 leading-tight">
+          <div className="flex items-center gap-1.5 truncate text-2xs text-text-2">
+            <span
+              className={cn(
+                'h-1.5 w-1.5 shrink-0 rounded-full',
+                source === 'gmail' ? 'bg-accent-green' : 'bg-accent-amber',
               )}
-            </div>
-            <div className="flex items-center gap-1 truncate text-2xs text-text-3">
-              <Dot className={source === 'gmail' ? 'bg-accent-green' : 'bg-accent-amber'} />
-              {source === 'gmail' ? 'Gmail' : source === 'bridge' ? 'Archivo local' : 'Demo'}
-            </div>
+            />
+            {source === 'gmail' ? 'Gmail' : source === 'bridge' ? 'Archivo local' : 'Demo'}
           </div>
-          <ThemeToggle />
+          <div className="truncate text-2xs text-text-3">
+            {lastSyncAt ? <TimeAgo iso={lastSyncAt} prefix="Sync " /> : 'Sin sincronizar'}
+          </div>
         </div>
+        <ThemeToggle />
       </div>
     </aside>
   );
