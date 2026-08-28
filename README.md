@@ -429,10 +429,29 @@ responda de inmediato. Si Gmail rechaza la operación, la respuesta trae un
 npm run cron:install
 ```
 
-Registra una tarea diaria en el Programador de tareas de Windows que ejecuta
-`npm run sync` a las 08:00 y escribe en `logs/sync.log`. No necesita permisos de
-administrador ni que el servidor de Next esté levantado — el script habla
-directamente con la capa de datos.
+Registra una tarea diaria en el Programador de tareas de Windows que sincroniza
+a las 08:00 y escribe en `logs/sync.log`. No necesita permisos de administrador
+ni que el servidor de Next esté levantado — el script habla directamente con la
+capa de datos.
+
+Tres detalles que costaron una vuelta cada uno:
+
+- **La tarea llama a `node.exe` por ruta absoluta**, no a `npm run sync`. El
+  Programador de tareas no hereda el `PATH` de la sesión, así que `npm` no
+  encontraría `node`.
+- **El log lo escribe el script, no una redirección.** `cmd /c` se come las
+  comillas cuando la orden empieza por una, y la redirección se perdía sin
+  dejar rastro. Con `--log`, el propio script anexa a `logs/sync.log`.
+- **`LogonType Interactive`, no `S4U`.** S4U permite correr sin sesión iniciada
+  pero exige privilegios de administrador para registrarse. Interactive no los
+  pide, a cambio de que la sincronización solo corra con la sesión abierta;
+  `-StartWhenAvailable` hace que se ponga al día al volver.
+
+Para comprobar que quedó bien:
+
+```bash
+npm run cron:install -- -Remove
+```
 
 ```bash
 npm run cron:install -- -Time 07:30
@@ -590,6 +609,45 @@ el texto se bajó a `#E3E4E8` en lugar de blanco puro.
 | `#` / `Supr` | Mover a la papelera |
 | `/` | Enfocar el buscador |
 | `Esc` | Limpiar la búsqueda |
+
+---
+
+## Antivirus que inspecciona TLS
+
+Si la sincronización falla con:
+
+```
+self-signed certificate in certificate chain
+```
+
+la causa es un antivirus con inspección de tráfico cifrado —Kaspersky, ESET,
+Avast y similares—. Interceptan la conexión TLS con Gmail y la re-firman con
+una raíz propia que instalan en el almacén de certificados de Windows.
+
+Node **no** usa el almacén del sistema: trae su propia lista de autoridades, no
+encuentra esa raíz y aborta.
+
+La app lo resuelve sola. Al arrancar, tanto los scripts de CLI
+([`scripts/_env.ts`](scripts/_env.ts)) como el servidor de Next
+([`src/instrumentation.ts`](src/instrumentation.ts)) añaden los certificados
+raíz del sistema a los que Node ya trae:
+
+```ts
+tls.setDefaultCACertificates([
+  ...tls.getCACertificates('default'),
+  ...tls.getCACertificates('system'),
+]);
+```
+
+Se **amplía** el conjunto de autoridades de confianza con las que el sistema ya
+considera válidas. En ningún momento se desactiva la verificación del
+certificado — `NODE_TLS_REJECT_UNAUTHORIZED=0` sería la solución fácil y
+equivocada, porque dejaría la conexión abierta a cualquier intermediario, no
+solo al antivirus.
+
+Requiere Node 22.15 o superior, que es cuando aparecen esas dos APIs. En
+versiones anteriores habría que usar `NODE_EXTRA_CA_CERTS` apuntando al
+certificado del antivirus.
 
 ---
 

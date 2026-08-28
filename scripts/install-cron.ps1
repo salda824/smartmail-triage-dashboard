@@ -50,18 +50,26 @@ if ($Time -notmatch '^([01]\d|2[0-3]):[0-5]\d$') {
     throw "Hora invalida: '$Time'. Usa el formato HH:mm, por ejemplo 08:00."
 }
 
-$npm = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
-if (-not $npm) { $npm = (Get-Command npm -ErrorAction SilentlyContinue).Source }
-if (-not $npm) { throw 'No se encontro npm en el PATH.' }
+# Se invoca node.exe por su ruta absoluta, no `npm run sync`. Dos motivos: la
+# tarea programada no hereda el PATH de la sesion, asi que `npm` no encontraria
+# `node`; y `cmd /c` destroza las comillas cuando la orden empieza por una, de
+# modo que la redireccion al log se perdia. El propio script escribe el log
+# con `--log`.
+$node = (Get-Command node.exe -ErrorAction SilentlyContinue).Source
+if (-not $node -and (Test-Path 'C:\Program Files\nodejs\node.exe')) {
+    $node = 'C:\Program Files\nodejs\node.exe'
+}
+if (-not $node) { throw 'No se encontro node.exe. Instala Node.js o anadelo al PATH.' }
+
+$tsx = Join-Path $ProjectRoot 'node_modules\tsx\dist\cli.mjs'
+if (-not (Test-Path $tsx)) { throw "No se encontro tsx en $tsx. Ejecuta npm install." }
 
 $logDir = Join-Path $ProjectRoot 'logs'
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
 $logFile = Join-Path $logDir 'sync.log'
 
-# cmd.exe envuelve la llamada solo para poder anexar stdout y stderr al log.
-$command = "`"$npm`" run sync >> `"$logFile`" 2>&1"
-$action = New-ScheduledTaskAction -Execute 'cmd.exe' `
-    -Argument "/c $command" `
+$action = New-ScheduledTaskAction -Execute $node `
+    -Argument "`"$tsx`" `"$(Join-Path $ProjectRoot 'scripts\sync.ts')`" --log" `
     -WorkingDirectory $ProjectRoot
 
 $trigger = New-ScheduledTaskTrigger -Daily -At $Time
@@ -73,10 +81,13 @@ $settings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 15) `
     -MultipleInstances IgnoreNew
 
-# S4U permite correr sin sesion iniciada y sin guardar la contrasena del usuario.
+# Interactive corre en la sesion del usuario y, a diferencia de S4U, no exige
+# privilegios de administrador para registrar la tarea. A cambio la
+# sincronizacion solo se ejecuta con la sesion iniciada; -StartWhenAvailable
+# hace que se ponga al dia en cuanto el usuario vuelve.
 $principal = New-ScheduledTaskPrincipal `
-    -UserId $env:USERNAME `
-    -LogonType S4U `
+    -UserId "$env:USERDOMAIN\$env:USERNAME" `
+    -LogonType Interactive `
     -RunLevel Limited
 
 $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue

@@ -1,6 +1,43 @@
-import { loadEnv, readFlag } from './_env';
+import fs from 'node:fs';
+import path from 'node:path';
+import { hasFlag, loadEnv, readFlag } from './_env';
 
 loadEnv();
+
+/**
+ * Con `--log`, todo lo que se imprima se duplica en `logs/sync.log`.
+ *
+ * Lo hace el script y no una redireccion del sistema porque el Programador de
+ * tareas de Windows invoca a traves de `cmd /c`, que destroza las comillas
+ * cuando la orden empieza por una: la redireccion se perdia y no se escribia
+ * nada. Escribiendo el archivo desde aqui, la tarea puede llamar a node
+ * directamente y no depende del shell.
+ */
+function enableFileLog(): void {
+  const logDir = path.join(process.cwd(), 'logs');
+  fs.mkdirSync(logDir, { recursive: true });
+  const logFile = path.join(logDir, 'sync.log');
+
+  // Escritura sincrona a proposito: el script termina con process.exit(), que
+  // no espera a que un stream asincrono vacie su buffer. Con createWriteStream
+  // el log se cortaba a media ejecucion. Son unas pocas lineas al dia.
+  const forward =
+    (original: (...args: unknown[]) => void) =>
+    (...args: unknown[]) => {
+      try {
+        fs.appendFileSync(logFile, `${new Date().toISOString()} ${args.join(' ')}\n`);
+      } catch {
+        // Un fallo al escribir el log no debe abortar la sincronizacion.
+      }
+      original(...args);
+    };
+
+  console.log = forward(console.log.bind(console));
+  console.warn = forward(console.warn.bind(console));
+  console.error = forward(console.error.bind(console));
+}
+
+if (hasFlag('log')) enableFileLog();
 
 /**
  * Sincronizacion por linea de comandos.
