@@ -14,7 +14,15 @@ export type ViewMode = 'cards' | 'list';
  * Empleo va primero y fijo: es la categoria de mayor prioridad para el usuario,
  * y tenerla siempre en el mismo sitio evita buscarla cuando la bandeja crece.
  */
-const NAV_ORDER: Category[] = ['JOB', 'URGENT', 'FINANCE', 'NEWS', 'INTERESTING', 'GENERAL'];
+const NAV_ORDER: Category[] = [
+  'JOB',
+  'URGENT',
+  'FINANCE',
+  'NEWS',
+  'INTERESTING',
+  'PROMO',
+  'GENERAL',
+];
 
 /** `live` indica que las acciones se propagan a Gmail, no solo al cache local. */
 const SOURCE_LABEL: Record<string, { label: string; live: boolean }> = {

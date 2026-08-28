@@ -1,4 +1,12 @@
-import { AlertTriangle, Briefcase, CreditCard, Lightbulb, Newspaper, Package } from 'lucide-react';
+import {
+  AlertTriangle,
+  Briefcase,
+  CreditCard,
+  Lightbulb,
+  Newspaper,
+  Package,
+  Tag,
+} from 'lucide-react';
 import type { CategoryIcon as IconName } from '@/types/email';
 
 const ICONS = {
@@ -7,6 +15,7 @@ const ICONS = {
   card: CreditCard,
   news: Newspaper,
   bulb: Lightbulb,
+  tag: Tag,
   package: Package,
 } as const;
 

@@ -1,5 +1,11 @@
 import type { Category, ExtractedData } from '@/types/email';
-import { NOISE_SENDERS, RULES, type CategoryRules } from '@/lib/classifier/rules';
+import {
+  CONTENT_NOT_PROMO,
+  NOISE_SENDERS,
+  RULES,
+  SOCIAL_SENDERS,
+  type CategoryRules,
+} from '@/lib/classifier/rules';
 import {
   extractAmount,
   extractCarrier,
@@ -108,6 +114,18 @@ export function classifyEmail(email: ClassifiableEmail): ClassificationResult {
     subjectHitsByCategory.URGENT === 0
   ) {
     scores.URGENT = Math.max(0, scores.URGENT - 3);
+  }
+
+  // Una notificacion de red social no es publicidad, por mucho que el cuerpo
+  // arrastre el titular comercial de otra persona.
+  if (SOCIAL_SENDERS.test(email.senderEmail ?? '')) {
+    scores.PROMO = 0;
+  }
+
+  // Contenido o aviso operativo enviado por una marca: el remitente sugiere
+  // publicidad, pero el asunto dice claramente que no lo es.
+  if (scores.PROMO > 0 && CONTENT_NOT_PROMO.test(`${email.subject ?? ''} ${body.slice(0, 400)}`)) {
+    scores.PROMO = 0;
   }
 
   const MIN_SCORE = 5;

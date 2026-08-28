@@ -279,6 +279,34 @@ Incluye casos de estudio de equipos grandes y herramientas recomendadas.
     isRead: true,
   },
 
+  // --- Promociones --------------------------------------------------------
+  {
+    id: 'demo-promo-01',
+    hoursAgo: 9,
+    from: '"adidas" <adidas@co-news.adidas.com>',
+    subject: '30% DTO en toda la tienda - solo hoy',
+    body: `Aprovecha el 30% de descuento en running, entrenamiento y estilo de vida.
+
+Envio gratis en compras superiores a $200.000 COP.
+Usa el codigo VERANO30 al pagar.
+
+Ultimas unidades en tallas seleccionadas. Compra ahora.
+
+Aplican terminos y condiciones. Promocion valida hasta agotar existencias.`,
+  },
+  {
+    id: 'demo-promo-02',
+    hoursAgo: 33,
+    from: '"Rappicard" <rappicard@hello.rappicard.co>',
+    subject: 'Juan Diego, descubre tu cupo preaprobado',
+    body: `Tenemos un cupo preaprobado esperando por ti.
+
+Pide tu tarjeta de credito Rappicard y disfruta cashback en tus compras.
+
+Aplican terminos y condiciones.`,
+    isRead: true,
+  },
+
   // --- General ------------------------------------------------------------
   {
     id: 'demo-general-01',

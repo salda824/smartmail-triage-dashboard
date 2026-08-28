@@ -128,6 +128,8 @@ async function main() {
     'demo-interesting-01': 'INTERESTING',
     'demo-interesting-02': 'INTERESTING',
     'demo-interesting-03': 'INTERESTING',
+    'demo-promo-01': 'PROMO',
+    'demo-promo-02': 'PROMO',
     'demo-general-01': 'GENERAL',
   };
 
@@ -343,6 +345,141 @@ async function main() {
       'hola@imhapi.app',
       'Invitacion: Juan, Invitacion Master Class Hapi: Cripto mas alla del precio',
       'Piero Sifuentes y Camilo analizan que mueve realmente al mercado cripto. 60 min en vivo.',
+    ),
+  );
+
+  // -------------------------------------------------------------------------
+  section('Promociones y sus fronteras');
+  // -------------------------------------------------------------------------
+
+  // Publicidad de tienda que antes caia en General.
+  check(
+    'merchandising deportivo -> PROMO',
+    classifyCase(
+      'newsletter@fans.williamsf1.com',
+      'Nueva coleccion 2026 con 20% de descuento',
+      'Ver la coleccion completa. Envio gratis en pedidos superiores a 50 EUR.',
+    ) === 'PROMO',
+    classifyCase(
+      'newsletter@fans.williamsf1.com',
+      'Nueva coleccion 2026 con 20% de descuento',
+      'Ver la coleccion completa. Envio gratis en pedidos superiores a 50 EUR.',
+    ),
+  );
+  check(
+    'credito preaprobado -> PROMO',
+    classifyCase(
+      'rappicard@hello.rappicard.co',
+      'Descubre tu cupo preaprobado',
+      'Pide tu tarjeta y disfruta cashback. Aplican terminos y condiciones.',
+    ) === 'PROMO',
+  );
+
+  // Fronteras: Promociones tiene la prioridad mas baja y no debe robar correos
+  // que pertenecen a una categoria con mas peso, aunque mencionen descuentos.
+  check(
+    'una factura con descuento sigue siendo FINANCE',
+    classifyCase(
+      'facturacion@clarocolombia.com',
+      'Tu factura de agosto ya esta lista',
+      'Valor total a pagar: $89.900 COP. Fecha de vencimiento: 05/09/2026. Incluye 10% de descuento por pago anticipado.',
+    ) === 'FINANCE',
+    classifyCase(
+      'facturacion@clarocolombia.com',
+      'Tu factura de agosto ya esta lista',
+      'Valor total a pagar: $89.900 COP. Fecha de vencimiento: 05/09/2026. Incluye 10% de descuento por pago anticipado.',
+    ),
+  );
+  check(
+    'un curso con descuento sigue siendo INTERESTING',
+    classifyCase(
+      'hola@platzi.com',
+      'Nuevo curso: Arquitectura de Software con Next.js',
+      'Aprenderas patrones de diseno, App Router y despliegue. Duracion 12 horas, incluye certificacion.',
+    ) === 'INTERESTING',
+    classifyCase(
+      'hola@platzi.com',
+      'Nuevo curso: Arquitectura de Software con Next.js',
+      'Aprenderas patrones de diseno, App Router y despliegue. Duracion 12 horas, incluye certificacion.',
+    ),
+  );
+  check(
+    'un webinar gratuito no es publicidad',
+    classifyCase(
+      'aws-marketing@amazon.com',
+      'Te invitamos: Webinar gratuito sobre Serverless en LATAM',
+      'Registrate en nuestro webinar. Ponentes: arquitectos de soluciones. Costo: gratuito.',
+    ) === 'INTERESTING',
+    classifyCase(
+      'aws-marketing@amazon.com',
+      'Te invitamos: Webinar gratuito sobre Serverless en LATAM',
+      'Registrate en nuestro webinar. Ponentes: arquitectos de soluciones. Costo: gratuito.',
+    ),
+  );
+  check(
+    'un correo personal no es publicidad',
+    classifyCase(
+      'carlos.mesa@gmail.com',
+      'Re: fotos del fin de semana',
+      'Hola Juan, te comparto las fotos del paseo. Quedaron muy buenas.',
+    ) === 'GENERAL',
+  );
+
+  // Una invitacion de LinkedIn arrastra el titular profesional de quien invita.
+  // Si esa persona trabaja en retail, el cuerpo se llena de vocabulario
+  // comercial que no dice nada del correo en si.
+  check(
+    'una invitacion de LinkedIn no es publicidad',
+    classifyCase(
+      'invitations@linkedin.com',
+      'Te he enviado una solicitud de contacto',
+      'Andres Felipe, Gerente de tienda en Falabella retail, esta esperando tu respuesta.',
+    ) !== 'PROMO',
+    classifyCase(
+      'invitations@linkedin.com',
+      'Te he enviado una solicitud de contacto',
+      'Andres Felipe, Gerente de tienda en Falabella retail, esta esperando tu respuesta.',
+    ),
+  );
+
+  // Los clubes y las aerolineas mandan contenido y avisos, no solo catalogo.
+  check(
+    'la cronica de un partido no es publicidad',
+    classifyCase(
+      'realmadridcf@madridista-premium.realmadrid.com',
+      '4-1: El Madrid golea con un hat-trick de Mbappe',
+      'Madridistas Premium. Cronica del partido y lo mas destacado de la jornada.',
+    ) !== 'PROMO',
+    classifyCase(
+      'realmadridcf@madridista-premium.realmadrid.com',
+      '4-1: El Madrid golea con un hat-trick de Mbappe',
+      'Madridistas Premium. Cronica del partido y lo mas destacado de la jornada.',
+    ),
+  );
+  check(
+    'un aviso operativo de aerolinea no es publicidad',
+    classifyCase(
+      'milesandsmiles@milesandsmiles.turkishairlines.com',
+      'Information Regarding Asiana Airlines Flights',
+      'Please be informed about changes to the codeshare agreement affecting some routes.',
+    ) !== 'PROMO',
+    classifyCase(
+      'milesandsmiles@milesandsmiles.turkishairlines.com',
+      'Information Regarding Asiana Airlines Flights',
+      'Please be informed about changes to the codeshare agreement affecting some routes.',
+    ),
+  );
+  check(
+    'pero una oferta de viaje si lo es',
+    classifyCase(
+      'at@news.lastminute.com',
+      'Dein Urlaub ab 280 EUR - jetzt mit unseren Last Minute Deals',
+      'Jetzt sichern und sparen. Angebote nur fuer kurze Zeit.',
+    ) === 'PROMO',
+    classifyCase(
+      'at@news.lastminute.com',
+      'Dein Urlaub ab 280 EUR - jetzt mit unseren Last Minute Deals',
+      'Jetzt sichern und sparen. Angebote nur fuer kurze Zeit.',
     ),
   );
 

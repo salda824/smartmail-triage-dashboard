@@ -31,6 +31,7 @@
     --accent-red: 224 108 117;
     --accent-green: 87 167 115;
     --accent-cyan: 79 182 196;
+    --accent-pink: 216 112 168;
 
     --line: rgba(255, 255, 255, 0.07);
     --line-strong: rgba(255, 255, 255, 0.12);
@@ -53,6 +54,7 @@
     --accent-red: 198 62 72;
     --accent-green: 40 122 76;
     --accent-cyan: 24 132 148;
+    --accent-pink: 178 62 130;
 
     --line: rgba(16, 20, 28, 0.09);
     --line-strong: rgba(16, 20, 28, 0.16);

@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS emails (
   snippet        TEXT NOT NULL DEFAULT '',
   body_preview   TEXT NOT NULL DEFAULT '',
   category       TEXT NOT NULL DEFAULT 'GENERAL'
-                 CHECK (category IN ('JOB','URGENT','FINANCE','NEWS','INTERESTING','GENERAL')),
+                 CHECK (category IN ('JOB','URGENT','FINANCE','NEWS','INTERESTING','PROMO','GENERAL')),
   confidence     REAL NOT NULL DEFAULT 0,
   extracted_data TEXT NOT NULL DEFAULT '{}', -- JSON
   is_read        INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0,1)),

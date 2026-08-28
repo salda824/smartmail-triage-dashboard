@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
+import { migrate } from '@/lib/migrations';
 
 /**
  * Conexion unica a SQLite.
@@ -35,7 +36,20 @@ function createConnection(): DB {
   // Evita "database is locked" cuando el cron y el dashboard escriben a la vez.
   db.pragma('busy_timeout = 5000');
 
+  // Se comprueba antes de aplicar el esquema: despues, la tabla existe siempre
+  // y ya no se podria distinguir una base nueva de una que viene de una version
+  // anterior y necesita migrarse.
+  const { n } = db
+    .prepare(`SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'emails'`)
+    .get() as { n: number };
+  const isFresh = n === 0;
+
   applySchema(db);
+
+  // Si una migracion recrea la tabla, sus indices y su trigger se van con ella:
+  // se vuelve a aplicar el esquema, que es idempotente, para restituirlos.
+  if (migrate(db, isFresh)) applySchema(db);
+
   return db;
 }
 

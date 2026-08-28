@@ -31,6 +31,7 @@ const config: Config = {
           red: rgb('accent-red'),
           green: rgb('accent-green'),
           cyan: rgb('accent-cyan'),
+          pink: rgb('accent-pink'),
         },
       },
       borderColor: {

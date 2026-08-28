@@ -239,7 +239,13 @@ El archivo puede ser un arreglo suelto o `{ "messages": [...] }`, y tolera
 | 💳 | **Pagos y Envíos** | Facturas, extractos, compras, suscripciones, guías de paquetería. |
 | 📰 | **Noticias** | Newsletters y boletines. |
 | 💡 | **Interesantes** | Cursos, webinars, guías largas, eventos. |
+| 🏷️ | **Promociones** | Descuentos, ofertas, catálogos y marketing de tiendas. |
 | 📦 | **General** | Lo que no encaja en las anteriores. |
+
+> **Promociones no estaba en el diseño original.** Se añadió después de medir
+> una bandeja real: el 68% de los correos caía en *General*, casi todos
+> publicidad de retail, y el panel apenas hacía triaje. Con la categoría nueva,
+> *General* bajó al 42%.
 
 ### Cómo decide
 
@@ -256,10 +262,26 @@ se queda con la de mayor puntaje:
 - **Desempate** — por `priority`. Un correo que es factura *y* urgente se
   muestra como urgente, porque es la acción que no puede esperar.
 
-Un detalle que costó afinar: los remitentes automáticos (`no-reply@…`) reciben
-una penalización en `URGENT` para que el correo masivo no se cuele ahí, **pero
-solo si el asunto no disparó ninguna señal de urgencia**. Una alerta de
-seguridad real también llega desde un `no-reply`, y penalizarla la escondía.
+### Señales negativas
+
+Tres reglas anulan una categoría en vez de sumar a otra. Todas salieron de
+falsos positivos observados en correo real:
+
+- **Remitente automático → menos `URGENT`.** El correo masivo desde `no-reply@`
+  no suele exigir acción. Pero la penalización **solo se aplica si el asunto no
+  disparó ninguna señal de urgencia**: una alerta de seguridad real también
+  llega desde un `no-reply`, y castigarla la escondía.
+- **Buzón social → nunca `PROMO`.** Una invitación de LinkedIn arrastra el
+  titular profesional de quien invita; si esa persona trabaja en retail, el
+  cuerpo se llena de vocabulario comercial que no dice nada del correo.
+- **Contenido u aviso operativo → nunca `PROMO`.** Una tienda, un club o una
+  aerolínea no solo venden: informan del resultado de un partido o de un cambio
+  de vuelo. Sin esta regla, «4-1: El Madrid golea» e «Information Regarding
+  Asiana Flights» acababan etiquetados como publicidad.
+
+La alternativa a la última —bajar el peso de esos remitentes— se probó y se
+descartó: arreglaba 3 falsos positivos pero perdía 10 aciertos. Una señal
+negativa precisa cuesta menos que una rebaja general.
 
 ---
 
@@ -310,7 +332,7 @@ emails (
   date_received  TEXT,               -- ISO 8601
   snippet        TEXT,
   body_preview   TEXT,
-  category       TEXT,               -- JOB|URGENT|FINANCE|NEWS|INTERESTING|GENERAL
+  category       TEXT,               -- JOB|URGENT|FINANCE|NEWS|INTERESTING|PROMO|GENERAL
   confidence     REAL,
   extracted_data TEXT,               -- JSON
   is_read        INTEGER,
@@ -322,7 +344,25 @@ emails (
 
 Más `sync_log`, que alimenta el sello de *última sincronización*.
 
-Dos decisiones que vale la pena conocer:
+### Migraciones
+
+El esquema se versiona con `PRAGMA user_version` y las migraciones viven en
+[`src/lib/migrations.ts`](src/lib/migrations.ts). Hacen falta porque
+`schema.sql` usa `CREATE TABLE IF NOT EXISTS`: en una base que ya existe es un
+no-op, así que un cambio de esquema nunca llegaría solo.
+
+SQLite no permite modificar una restricción `CHECK` con `ALTER TABLE`, de modo
+que la migración a v2 (añadir `PROMO`) recrea la tabla y copia las filas dentro
+de una transacción. Como al recrearla se pierden sus índices y su trigger, el
+esquema se vuelve a aplicar justo después.
+
+Para ver el estado:
+
+```bash
+npm run db:check
+```
+
+### Otras decisiones
 
 - La sincronización es **idempotente**. Un `ON CONFLICT DO UPDATE` refresca
   contenido y clasificación, pero **conserva `is_archived`**: si ya archivaste
@@ -386,6 +426,7 @@ En Linux o macOS, el equivalente en crontab:
 | `npm run seed` | Llena la base con los datos de demostración |
 | `npm run reset -- --demo` | Quita del caché los correos de demostración |
 | `npm run reset -- --all` | Vacía el caché por completo (no toca Gmail) |
+| `npm run db:check` | Versión de esquema, integridad y reparto por categoría |
 | `npm run sync` | Sincroniza con la fuente configurada |
 | `npm run imap:test` | Comprueba la conexión IMAP (solo lectura) |
 | `npm run gmail:auth` | Obtiene el refresh token de Gmail (opción B) |
@@ -407,7 +448,7 @@ npm run sync -- --query "is:unread newer_than:7d" --max 50
 npm run verify
 ```
 
-66 comprobaciones: normalización de texto, parsing de montos en tres formatos,
+83 comprobaciones: normalización de texto, parsing de montos en tres formatos,
 extracción de fechas y guías, clasificación de los 19 correos de ejemplo,
 enriquecimiento de tarjetas, casos de regresión tomados de correo real, y el
 ciclo completo sincronizar → leer → marcar → borrar sobre una base de pruebas

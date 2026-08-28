@@ -8,6 +8,7 @@ export const CATEGORIES = [
   'FINANCE',
   'NEWS',
   'INTERESTING',
+  'PROMO',
   'GENERAL',
 ] as const;
 
@@ -20,6 +21,7 @@ export type CategoryIcon =
   | 'card'
   | 'news'
   | 'bulb'
+  | 'tag'
   | 'package';
 
 export interface CategoryMeta {
@@ -101,6 +103,18 @@ export const CATEGORY_META: Record<Category, CategoryMeta> = {
     panel: 'border-accent-cyan/20 bg-accent-cyan/[0.07]',
     chip: 'bg-accent-cyan/12 text-accent-cyan ring-accent-cyan/25',
     description: 'Lecturas, webinars y recursos',
+  },
+  PROMO: {
+    id: 'PROMO',
+    label: 'Promociones',
+    short: 'Promos',
+    icon: 'tag',
+    dot: 'bg-accent-pink',
+    badge: 'bg-accent-pink/12 text-accent-pink',
+    text: 'text-accent-pink',
+    panel: 'border-accent-pink/20 bg-accent-pink/[0.07]',
+    chip: 'bg-accent-pink/12 text-accent-pink ring-accent-pink/25',
+    description: 'Descuentos, ofertas y marketing de tiendas',
   },
   GENERAL: {
     id: 'GENERAL',

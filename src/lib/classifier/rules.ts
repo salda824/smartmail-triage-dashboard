@@ -155,8 +155,15 @@ const NEWS: CategoryRules = {
     s(/\b(novedades|updates|whats new|que hay de nuevo|release notes|changelog|anuncio|announcing)\b/, 3, 'novedades'),
   ],
   body: [
-    s(/\b(darse de baja|cancelar suscripcion|unsubscribe|manage (?:your )?preferences|preferencias de correo|ver en el navegador|view in browser)\b/, 3, 'pie de newsletter'),
-    s(/\b(en esta edicion|in this issue|contenido de hoy|todays? (?:stories|picks)|lo destacado)\b/, 4, 'indice de edicion'),
+    // El pie de baja identifica correo masivo, no necesariamente editorial: es
+    // el mismo en un boletin y en un catalogo. Pesa lo justo para que, unido a
+    // una senal editorial, cruce el umbral; solo, no basta.
+    s(/\b(darse de baja|cancelar suscripcion|unsubscribe|manage (?:your )?preferences|preferencias de correo|ver en el navegador|view in browser)\b/, 4, 'pie de correo masivo'),
+    s(/\b(en esta edicion|in this issue|contenido de hoy|todays? (?:stories|picks)|lo destacado)\b/, 5, 'indice de edicion'),
+    // Boletines de mercados y analisis: el asunto suele ser un titular sin
+    // palabras clave, y la senal esta en el vocabulario del cuerpo.
+    s(/\b(mercados?|acciones|inversion|inversionista|portafolio|rentabilidad|earnings|stocks?|ticker|bolsa|nasdaq|s&p|dolar cerro)\b/, 5, 'analisis de mercado'),
+    s(/\b(analisis|analizan|opinion|columna|entrevista|reportaje|editorial|resumen del dia|lo que paso)\b/, 4, 'contenido editorial'),
   ],
 };
 
@@ -187,7 +194,66 @@ const INTERESTING: CategoryRules = {
   ],
 };
 
-export const RULES: CategoryRules[] = [URGENT, JOB, FINANCE, INTERESTING, NEWS];
+// ---------------------------------------------------------------------------
+// 6. Promociones
+// ---------------------------------------------------------------------------
+
+/**
+ * Marketing de tiendas.
+ *
+ * Es la categoria mas poblada de una bandeja personal real y, sin ella, todo
+ * esto caia en General y dejaba al panel sin nada que triar. Va con la
+ * prioridad mas baja a proposito: una confirmacion de compra es Pagos, una
+ * vacante es Empleo y un webinar es Interesante, aunque el correo tambien
+ * traiga un descuento.
+ *
+ * Las senales son de comercio, no de "gratis" a secas: un webinar gratuito o
+ * una beca no son publicidad, y confundirlos vaciaria Interesantes.
+ */
+const PROMO: CategoryRules = {
+  category: 'PROMO',
+  priority: 1,
+  domains: [
+    // Subdominios de envio masivo comercial. Una marca que escribe desde
+    // `ecomm.`, `mailing.` o `co-news.` esta haciendo campana, no informando.
+    // Pesa 4: por si solo no llega al umbral, necesita apoyo del contenido.
+    s(/(ecomm|mailing|marketing|co-news|email\.|mail\.|news\.|announcements|creators|store|shop|tienda|retail|deals|ofertas)/, 4, 'envio masivo comercial'),
+    // Sectores cuyo correo es mayoritariamente catalogo. Conservan peso alto
+    // porque son buenos predictores; los avisos operativos y el contenido
+    // editorial que tambien envian se descartan con CONTENT_NOT_PROMO, que es
+    // una senal precisa en vez de una rebaja general que costaba mas aciertos
+    // de los falsos positivos que evitaba.
+    s(/(adidas|nike|asics|zara|hm\.com|shein|aliexpress|temu|lenovo|samsung|falabella|exito|alkosto)/, 5, 'tienda conocida'),
+    s(/(lastminute|booking|despegar|kiwi\.com|expedia|airbnb|milesandsmiles|latam|avianca|turkish)/, 5, 'viajes'),
+    s(/(foodora|rappi|ubereats|didi|glovo|justeat|pedidosya)/, 5, 'comida a domicilio'),
+    s(/(fcbayern|realmadrid|williamsf1|f1\.com|nba\.com|uefa)/, 5, 'club deportivo'),
+  ],
+  subject: [
+    // Precios en el asunto: "desde $699", "ab 280 EUR", "UNDER $1,199".
+    s(/(desde|from|ab|under|solo|nur|bis zu)\s*[\$€£]\s?\d|[\$€£]\s?\d{2,}/, 5, 'precio en el asunto'),
+    // Terminos comerciales alemanes: buena parte de esta bandeja llega en aleman.
+    s(/\b(rabatt|gutschein|angebot|angebote|sparen|deal|deals|kostenlos|gratis|jetzt sichern|sichere dir)\b/, 5, 'oferta en aleman'),
+    s(/\d{1,3}\s?%\s?(?:de\s?)?(?:dto|descuento|off|rabatt|menos)/, 7, 'porcentaje de descuento'),
+    s(/\b(descuento|descuentos|rebajas?|cup[oó]n|promocion|liquidacion|outlet|dto\b)/, 6, 'descuento'),
+    s(/\b(oferta especial|ofertas? desde|precio especial|precios? bajos?|mejor precio|desde \$)/, 6, 'oferta'),
+    s(/\b(black friday|cyber\s?(?:monday|days?)|hot sale|dia sin iva|buen fin)\b/, 7, 'campana comercial'),
+    s(/\b(envio gratis|free shipping|versandkostenfrei|envio sin costo)\b/, 6, 'envio gratis'),
+    s(/\b(compra (?:ya|ahora)|shop now|buy now|order now|jetzt (?:kaufen|shoppen)|comprar ahora)\b/, 6, 'llamada a comprar'),
+    s(/\b(nueva coleccion|new in|new arrivals?|nueva temporada|lo mas nuevo|neu (?:im|bei))\b/, 5, 'coleccion nueva'),
+    s(/\b(ultimas unidades|stock limitado|sold out|casi agotado|solo (?:hoy|por hoy)|termina (?:hoy|manana)|ultimo dia para)\b/, 5, 'urgencia comercial'),
+    s(/\b(gana un|sorteo|premio|te regalamos|regalo de cumpleanos|birthday (?:discount|gift)|gratisbox)\b/, 5, 'sorteo o regalo'),
+    s(/\b(cupo preaprobado|preaprobad[oa]|credito preaprobado|tarjeta preaprobada)\b/, 6, 'credito preaprobado'),
+    s(/\b(cashback|puntos|millas|miles|bonus|bono de)\b/, 4, 'puntos o millas'),
+  ],
+  body: [
+    s(/\b(anade al carrito|add to cart|ver productos|ver la coleccion|explorar la tienda|visita la tienda)\b/, 5, 'catalogo'),
+    s(/\b(antes \$|ahora \$|precio antes|precio ahora|ahorra \$|ahorra un)\b/, 5, 'comparacion de precio'),
+    s(/\b(aplican terminos y condiciones|terminos y condiciones aplican|promocion valida hasta|valido hasta agotar)\b/, 4, 'letra pequena'),
+    s(/\b(codigo de descuento|usa el codigo|promo code|discount code|gutschein)\b/, 5, 'codigo promocional'),
+  ],
+};
+
+export const RULES: CategoryRules[] = [URGENT, JOB, FINANCE, INTERESTING, NEWS, PROMO];
 
 /**
  * Remitentes automaticos.
@@ -199,3 +265,25 @@ export const RULES: CategoryRules[] = [URGENT, JOB, FINANCE, INTERESTING, NEWS];
  */
 export const NOISE_SENDERS =
   /(no-?reply|noreply|do-?not-?reply|notifications?@|mailer-daemon|postmaster|automated)/i;
+
+/**
+ * Buzones sociales de las redes: invitaciones, mensajes, grupos y avisos de
+ * "vieron tu perfil".
+ *
+ * No son publicidad aunque la red viva de vender: el correo en si es una
+ * notificacion personal. Sin esta lista, una invitacion de contacto acababa en
+ * Promociones porque el titular profesional del remitente mencionaba una tienda.
+ */
+export const SOCIAL_SENDERS =
+  /(invitations?@|messages-noreply@|notifications-noreply@|groups-noreply@|connections@|friend|social)/i;
+
+/**
+ * Contenido y avisos operativos que llegan desde remitentes comerciales.
+ *
+ * Una tienda, un club o una aerolinea no solo venden: informan del resultado
+ * del partido, de un cambio de vuelo o de una politica nueva. Estas senales
+ * anulan la puntuacion de Promociones para que el remitente por si solo no
+ * decida la categoria.
+ */
+export const CONTENT_NOT_PROMO =
+  /(\b\d\s?-\s?\d\b|hat-?trick|cronica|jornada|partido|goleo|fichaje|alineacion|resultado del|information regarding|please be informed|wichtige information|aviso importante|cambio (?:de|en) (?:tu |el |la )?(?:vuelo|itinerario|reserva|horario)|politica de privacidad|privacy policy|terminos (?:de servicio|y condiciones) (?:han|cambian)|actualizacion de (?:nuestras|las) politicas)/i;
