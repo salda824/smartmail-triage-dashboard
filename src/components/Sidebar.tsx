@@ -16,6 +16,14 @@ export type ViewMode = 'cards' | 'list';
  */
 const NAV_ORDER: Category[] = ['JOB', 'URGENT', 'FINANCE', 'NEWS', 'INTERESTING', 'GENERAL'];
 
+/** `live` indica que las acciones se propagan a Gmail, no solo al cache local. */
+const SOURCE_LABEL: Record<string, { label: string; live: boolean }> = {
+  imap: { label: 'Gmail (IMAP)', live: true },
+  gmail: { label: 'Gmail (API)', live: true },
+  bridge: { label: 'Archivo local', live: false },
+  demo: { label: 'Datos de ejemplo', live: false },
+};
+
 interface Props {
   active: TabId;
   counts: CategoryCounts;
@@ -188,10 +196,12 @@ export function Sidebar({
             <span
               className={cn(
                 'h-1.5 w-1.5 shrink-0 rounded-full',
-                source === 'gmail' ? 'bg-accent-green' : 'bg-accent-amber',
+                // Verde solo cuando hay conexion real con Gmail; ambar cuando el
+                // origen es local y las acciones no se propagan.
+                SOURCE_LABEL[source]?.live ? 'bg-accent-green' : 'bg-accent-amber',
               )}
             />
-            {source === 'gmail' ? 'Gmail' : source === 'bridge' ? 'Archivo local' : 'Demo'}
+            {SOURCE_LABEL[source]?.label ?? source}
           </div>
           <div className="truncate text-2xs text-text-3">
             {lastSyncAt ? <TimeAgo iso={lastSyncAt} prefix="Sync " /> : 'Sin sincronizar'}

@@ -141,7 +141,13 @@ const NEWS: CategoryRules = {
   domains: [
     s(/(substack|beehiiv|mailchimp|convertkit|ghost\.io|revue|buttondown|tinyletter|sendgrid\.net)/, 5, 'plataforma de newsletter'),
     s(/(techcrunch|theverge|wired|arstechnica|hackernews|medium|dev\.to|infoq|smashingmagazine|producthunt|morningbrew|axios|reuters|bloomberg|elpais|eltiempo|semana|larepublica|portafolio)/, 5, 'medio'),
-    s(/(newsletter|news|boletin|digest|weekly|daily)/, 4, 'buzon de boletin'),
+    // Senal debil a proposito. Las tiendas usan `newsletter@` y subdominios
+    // `news.` tanto como los medios: con peso alto, este patron metia en
+    // Noticias el merchandising de un club de futbol y las ofertas de vuelos,
+    // mientras los boletines editoriales de verdad se quedaban en General.
+    // Con peso 2 ya no alcanza el umbral por si solo; necesita apoyo del
+    // asunto o del cuerpo.
+    s(/(newsletter|boletin|digest|noticias)/, 2, 'buzon de boletin'),
   ],
   subject: [
     s(/\b(newsletter|boletin|digest|resumen (?:semanal|diario|mensual)|weekly (?:digest|roundup|recap)|daily (?:digest|brief|update)|edicion|issue #?\d+)\b/, 6, 'boletin'),
