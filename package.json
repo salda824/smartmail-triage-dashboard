@@ -5,6 +5,7 @@
   "description": "Dashboard inteligente de clasificacion, resumen y gestion de correos de Gmail",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/guard-build.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

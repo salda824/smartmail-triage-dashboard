@@ -1,6 +1,7 @@
 import { ImapFlow, type FetchMessageObject } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { stripInvisible, toSingleLine } from '@/lib/gmail/sanitize';
+import { trustSystemCertificates } from '@/lib/tls-trust';
 import {
   MailSourceError,
   type FetchOptions,
@@ -105,6 +106,9 @@ export class ImapSource implements MailSource {
   }
 
   private createClient(): ImapFlow {
+    // Necesario antes de abrir el socket cuando un antivirus intercepta TLS.
+    trustSystemCertificates();
+
     return new ImapFlow({
       host: this.config.host,
       port: this.config.port,

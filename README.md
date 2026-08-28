@@ -627,10 +627,9 @@ una raíz propia que instalan en el almacén de certificados de Windows.
 Node **no** usa el almacén del sistema: trae su propia lista de autoridades, no
 encuentra esa raíz y aborta.
 
-La app lo resuelve sola. Al arrancar, tanto los scripts de CLI
-([`scripts/_env.ts`](scripts/_env.ts)) como el servidor de Next
-([`src/instrumentation.ts`](src/instrumentation.ts)) añaden los certificados
-raíz del sistema a los que Node ya trae:
+La app lo resuelve sola. [`src/lib/tls-trust.ts`](src/lib/tls-trust.ts) añade
+los certificados raíz del sistema a los que Node ya trae, justo antes de abrir
+la conexión:
 
 ```ts
 tls.setDefaultCACertificates([
@@ -648,6 +647,25 @@ solo al antivirus.
 Requiere Node 22.15 o superior, que es cuando aparecen esas dos APIs. En
 versiones anteriores habría que usar `NODE_EXTRA_CA_CERTS` apuntando al
 certificado del antivirus.
+
+> El ajuste vive en un módulo propio y no en `instrumentation.ts` porque
+> webpack compila ese archivo también para el runtime Edge, donde `node:tls` no
+> existe: la compilación fallaba entera y la página devolvía 500.
+
+### No compiles con el servidor de desarrollo abierto
+
+`next dev` y `next build` escriben los dos en `.next`. Si compilas con el
+servidor activo, el build le sustituye los chunks que tiene en uso y pasa a
+servir un CSS vacío — la página se ve como HTML pelado, **sin un solo error en
+consola que lo explique**.
+
+Pasó dos veces durante el desarrollo, así que ahora un `prebuild`
+([`scripts/guard-build.mjs`](scripts/guard-build.mjs)) comprueba el puerto 3000
+y se niega a compilar. Si de verdad hace falta:
+
+```bash
+SKIP_BUILD_GUARD=1 npm run build
+```
 
 ---
 

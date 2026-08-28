@@ -1,5 +1,6 @@
 import { google, type gmail_v1 } from 'googleapis';
 import { stripInvisible, toSingleLine } from '@/lib/gmail/sanitize';
+import { trustSystemCertificates } from '@/lib/tls-trust';
 import { MailSourceError, type FetchOptions, type MailSource, type RawMessage } from '@/lib/gmail/types';
 
 /**
@@ -15,6 +16,9 @@ export const GMAIL_SCOPES = [
 ];
 
 export function createOAuthClient() {
+  // Necesario antes de la primera peticion cuando un antivirus intercepta TLS.
+  trustSystemCertificates();
+
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI ?? 'http://localhost:3000/api/auth/callback';
