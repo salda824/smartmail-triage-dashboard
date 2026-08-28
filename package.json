@@ -13,6 +13,7 @@
     "seed": "tsx scripts/sync.ts --mode demo",
     "reset": "tsx scripts/reset-db.ts",
     "verify": "tsx scripts/verify.ts",
+    "imap:test": "tsx scripts/imap-test.ts",
     "gmail:auth": "tsx scripts/gmail-auth.ts",
     "cron:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-cron.ps1"
   },
@@ -20,7 +21,9 @@
     "better-sqlite3": "^12.2.0",
     "clsx": "^2.1.1",
     "googleapis": "^144.0.0",
+    "imapflow": "^1.7.6",
     "lucide-react": "^0.469.0",
+    "mailparser": "^3.9.17",
     "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0",
@@ -28,6 +31,7 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",

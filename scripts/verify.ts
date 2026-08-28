@@ -347,6 +347,25 @@ async function main() {
   );
 
   // -------------------------------------------------------------------------
+  section('Identificadores de Gmail por IMAP');
+  // -------------------------------------------------------------------------
+  const { toGmailHexId, toGmailDecimalId } = await import('../src/lib/gmail/imap');
+
+  // IMAP entrega X-GM-MSGID en decimal; la URL de Gmail usa el hexadecimal.
+  // Que la conversion coincida es lo que evita duplicar los correos que ya
+  // estaban en cache con el id que dio la exportacion.
+  const realHex = '1a043b08aed7d402';
+  const realDec = '1874688253372126210';
+  check('decimal -> hexadecimal', toGmailHexId(realDec) === realHex, String(toGmailHexId(realDec)));
+  check('hexadecimal -> decimal', toGmailDecimalId(realHex) === realDec, String(toGmailDecimalId(realHex)));
+  check(
+    'la conversion es reversible',
+    toGmailHexId(toGmailDecimalId(realHex)!) === realHex,
+  );
+  check('sin id devuelve null', toGmailHexId(undefined) === null);
+  check('id no numerico devuelve null', toGmailHexId('no-es-un-id') === null);
+
+  // -------------------------------------------------------------------------
   section('Saneado de caracteres invisibles');
   // -------------------------------------------------------------------------
   const { stripInvisible, toSingleLine } = await import('../src/lib/gmail/sanitize');

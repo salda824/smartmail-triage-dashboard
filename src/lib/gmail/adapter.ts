@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { buildDemoMessages } from '@/lib/gmail/demo-data';
 import { GmailSource } from '@/lib/gmail/client';
+import { ImapSource } from '@/lib/gmail/imap';
 import { stripInvisible, toSingleLine } from '@/lib/gmail/sanitize';
 import {
   MailSourceError,
@@ -10,7 +11,7 @@ import {
   type RawMessage,
 } from '@/lib/gmail/types';
 
-export type SourceMode = 'gmail' | 'bridge' | 'demo';
+export type SourceMode = 'imap' | 'gmail' | 'bridge' | 'demo';
 
 // ---------------------------------------------------------------------------
 // Fuente puente: archivo JSON
@@ -174,13 +175,16 @@ export class DemoSource implements MailSource {
 // Fabrica
 // ---------------------------------------------------------------------------
 
+const MODES: SourceMode[] = ['imap', 'gmail', 'bridge', 'demo'];
+
 export function resolveSourceMode(): SourceMode {
   const configured = (process.env.MAIL_SOURCE ?? '').trim().toLowerCase();
-  if (configured === 'gmail' || configured === 'bridge' || configured === 'demo') {
-    return configured;
-  }
-  // Sin configuracion explicita: usa Gmail si hay credenciales, si no demo.
-  return process.env.GOOGLE_REFRESH_TOKEN ? 'gmail' : 'demo';
+  if ((MODES as string[]).includes(configured)) return configured as SourceMode;
+
+  // Sin configuracion explicita se elige por las credenciales disponibles.
+  if (process.env.IMAP_USER && process.env.IMAP_APP_PASSWORD) return 'imap';
+  if (process.env.GOOGLE_REFRESH_TOKEN) return 'gmail';
+  return 'demo';
 }
 
 /**
@@ -194,6 +198,18 @@ export function createMailSource(mode: SourceMode = resolveSourceMode()): {
   source: MailSource;
   warning?: string;
 } {
+  if (mode === 'imap') {
+    try {
+      return { source: new ImapSource() };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return {
+        source: new DemoSource(),
+        warning: `IMAP no esta configurado (${detail}). Se usaron datos de demostracion.`,
+      };
+    }
+  }
+
   if (mode === 'gmail') {
     try {
       return { source: new GmailSource() };

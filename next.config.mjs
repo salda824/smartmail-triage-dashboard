@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // better-sqlite3 es un modulo nativo: no debe pasar por el bundler del servidor.
-  serverExternalPackages: ['better-sqlite3'],
+  // Modulos que solo existen en Node y no deben pasar por el bundler del
+  // servidor: better-sqlite3 es nativo, e imapflow/mailparser abren sockets y
+  // usan APIs de Node que webpack no sabe empaquetar.
+  serverExternalPackages: ['better-sqlite3', 'imapflow', 'mailparser'],
 };
 
 export default nextConfig;

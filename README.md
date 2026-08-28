@@ -14,6 +14,8 @@ la API de Gmail.
 - [Stack](#stack)
 - [Puesta en marcha](#puesta-en-marcha)
 - [Conectar Gmail](#conectar-gmail)
+  - [Opción A — IMAP](#opción-a--imap-con-contraseña-de-aplicación)
+  - [Opción B — Gmail API](#opción-b--gmail-api-con-oauth)
 - [Orígenes de datos](#orígenes-de-datos)
 - [Categorías y clasificación](#categorías-y-clasificación)
 - [Extracción de metadatos](#extracción-de-metadatos)
@@ -35,7 +37,7 @@ la API de Gmail.
 | Estilos | Tailwind CSS 3 con paleta propia |
 | Iconos | `lucide-react` |
 | Base de datos | SQLite vía `better-sqlite3` |
-| Gmail | `googleapis` (Gmail API v1, OAuth 2.0) |
+| Gmail | `imapflow` + `mailparser` (IMAP) o `googleapis` (Gmail API v1) |
 | Scripts | `tsx` |
 
 ---
@@ -69,6 +71,80 @@ Gmail.
 ---
 
 ## Conectar Gmail
+
+Hay dos caminos. **IMAP es el recomendado**: no necesita proyecto en Google
+Cloud ni pantalla de consentimiento, y la credencial no caduca sola.
+
+| | IMAP + contraseña de aplicación | Gmail API + OAuth |
+| --- | --- | --- |
+| Configuración | 3 pasos, ~5 min | Proyecto en Cloud, ~20 min |
+| Caducidad | No caduca | El refresh token caduca a los 7 días en modo *Testing* |
+| Alcance | Acceso completo al buzón | Solo los permisos concedidos |
+| Costo | Gratis | Gratis |
+
+Ambos leen y escriben (marcar leído, mover a papelera). Ninguno borra de forma
+permanente.
+
+---
+
+## Opción A — IMAP con contraseña de aplicación
+
+### 1. Activa la verificación en dos pasos
+
+Las contraseñas de aplicación solo existen si está activa:
+<https://myaccount.google.com/signinoptions/two-step-verification>
+
+### 2. Crea la contraseña de aplicación
+
+<https://myaccount.google.com/apppasswords> — nómbrala `SmartMail Triage`.
+Google te dará 16 caracteres en cuatro grupos.
+
+### 3. Comprueba que IMAP esté habilitado
+
+Gmail → Ver todos los ajustes → Reenvío y correo POP/IMAP → Habilitar IMAP.
+
+### 4. Configura y prueba
+
+En `.env.local`:
+
+```
+MAIL_SOURCE=imap
+IMAP_USER=tu.correo@gmail.com
+IMAP_APP_PASSWORD=abcd efgh ijkl mnop
+```
+
+Los espacios se limpian solos, puedes pegarla tal cual.
+
+```bash
+npm run imap:test
+```
+
+Ese comando solo lee: conecta, cuenta los mensajes de la bandeja y muestra los
+cinco más recientes para confirmar que las credenciales y el parseo funcionan.
+Si pasa, ya puedes sincronizar con `npm run sync`.
+
+### Detalles de la implementación
+
+- **Los identificadores coinciden con los de la Gmail API.** IMAP entrega
+  `X-GM-MSGID` en decimal; la interfaz web de Gmail usa su forma hexadecimal en
+  la URL. La app convierte entre las dos, así que el enlace *Abrir en Gmail*
+  funciona igual y los correos que ya estaban en caché se reconocen en lugar de
+  duplicarse si cambias de origen.
+- **La papelera se busca por su marca especial**, no por nombre: en una cuenta
+  en español la carpeta se llama `[Gmail]/Papelera`, y en inglés
+  `[Gmail]/Trash`.
+- **Los mensajes se mueven, nunca se marcan `\Deleted` + `EXPUNGE`**, para que
+  sigan siendo recuperables desde la papelera durante 30 días.
+- El registro de `imapflow` está desactivado: si no, escribiría cada comando
+  IMAP por consola, asuntos y remitentes incluidos.
+
+⚠️ Una contraseña de aplicación da **acceso completo al buzón**. Vive solo en
+`.env.local`, que está en `.gitignore`. Puedes revocarla en cualquier momento
+desde la misma página donde la creaste.
+
+---
+
+## Opción B — Gmail API con OAuth
 
 ### 1. Credenciales de Google
 
@@ -121,12 +197,14 @@ resto de la app no cambia.
 
 | Modo | Qué hace | Escribe en Gmail |
 | --- | --- | --- |
-| `gmail` | Gmail API real vía OAuth | Sí |
+| `imap` | IMAP con contraseña de aplicación | Sí |
+| `gmail` | Gmail API vía OAuth | Sí |
 | `bridge` | Lee un JSON de disco (`BRIDGE_INBOX_PATH`) | No |
 | `demo` | Set de ejemplo incluido | No |
 
-Sin `MAIL_SOURCE` definido, la app usa `gmail` si encuentra un refresh token y
-`demo` si no. Si `gmail` está pedido pero mal configurado, cae a `demo` con un
+Sin `MAIL_SOURCE` definido, la app elige según las credenciales que encuentre:
+`imap` si hay contraseña de aplicación, `gmail` si hay refresh token, y `demo`
+si no hay ninguna. Si el modo pedido está mal configurado, cae a `demo` con un
 aviso visible en el dashboard en lugar de mostrar una pantalla de error.
 
 ### Modo `bridge`
@@ -309,7 +387,8 @@ En Linux o macOS, el equivalente en crontab:
 | `npm run reset -- --demo` | Quita del caché los correos de demostración |
 | `npm run reset -- --all` | Vacía el caché por completo (no toca Gmail) |
 | `npm run sync` | Sincroniza con la fuente configurada |
-| `npm run gmail:auth` | Obtiene el refresh token de Gmail |
+| `npm run imap:test` | Comprueba la conexión IMAP (solo lectura) |
+| `npm run gmail:auth` | Obtiene el refresh token de Gmail (opción B) |
 | `npm run cron:install` | Programa la sincronización diaria |
 
 `npm run sync` acepta banderas:
@@ -371,8 +450,10 @@ src/
 │   │   ├── rules.ts                      señales por categoría
 │   │   └── extractors.ts                 montos, fechas, guías, urgencia
 │   ├── gmail/
+│   │   ├── imap.ts                       IMAP + contraseña de aplicación
 │   │   ├── client.ts                     Gmail API + parsing MIME
 │   │   ├── adapter.ts                    fábrica de orígenes
+│   │   ├── sanitize.ts                   limpieza de texto invisible
 │   │   ├── demo-data.ts
 │   │   └── types.ts
 │   ├── db.ts                             conexión SQLite
@@ -383,7 +464,9 @@ src/
 └── types/email.ts                        modelo de dominio
 scripts/
 ├── sync.ts                               CLI de sincronización
+├── imap-test.ts                          diagnóstico de la conexión IMAP
 ├── gmail-auth.ts                         flujo OAuth
+├── reset-db.ts                           limpieza del caché
 ├── verify.ts                             pruebas
 └── install-cron.ps1                      tarea programada
 ```
