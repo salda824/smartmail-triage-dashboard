@@ -1,5 +1,7 @@
 import type { Category, ExtractedData } from '@/types/email';
 import {
+  ACCOUNT_SENDERS,
+  BULK_FOOTER,
   CONTENT_NOT_PROMO,
   NOISE_SENDERS,
   RULES,
@@ -136,11 +138,46 @@ export function classifyEmail(email: ClassifiableEmail): ClassificationResult {
   })).sort((a, b) => (b.score !== a.score ? b.score - a.score : b.priority - a.priority));
 
   const winner = ranked[0];
-  const category: Category = winner && winner.score >= MIN_SCORE ? winner.category : 'GENERAL';
+  let category: Category = winner && winner.score >= MIN_SCORE ? winner.category : 'GENERAL';
+  let rescued = false;
+
+  /**
+   * Rescate de boletines.
+   *
+   * Los boletines editoriales llegan con titulares de gancho ("eight tickers,
+   * one bet") que no contienen ninguna palabra clave, asi que ninguna regla
+   * los alcanza y caian todos en General. Lo unico que comparten es el pie de
+   * baja, pero ese pie tambien lo llevan los catalogos.
+   *
+   * De ahi la definicion por descarte: correo en lote, sin ninguna senal de
+   * ninguna categoria, que no viene de una red social ni de un buzon de
+   * cuenta, y trae cuerpo suficiente para ser una lectura. Eso es un boletin.
+   *
+   * La condicion no es "no puntuo nada", sino "lo que mas puntuo fue Noticias
+   * y se quedo corto". Estos boletines suelen rondar los 4 puntos —hablan de
+   * mercados, traen pie de baja— sin llegar al umbral de 5; exigir cero
+   * senales los dejaba fuera precisamente a ellos.
+   */
+  const mejorCandidatoEsBoletin = !winner || winner.score === 0 || winner.category === 'NEWS';
+
+  if (
+    category === 'GENERAL' &&
+    mejorCandidatoEsBoletin &&
+    BULK_FOOTER.test(body) &&
+    body.length > 200 &&
+    !SOCIAL_SENDERS.test(email.senderEmail ?? '') &&
+    !ACCOUNT_SENDERS.test(email.senderEmail ?? '') &&
+    !CONTENT_NOT_PROMO.test(`${email.subject ?? ''} ${body.slice(0, 400)}`)
+  ) {
+    category = 'NEWS';
+    rescued = true;
+  }
 
   const runnerUp = ranked[1]?.score ?? 0;
-  const confidence =
-    category === 'GENERAL'
+  const confidence = rescued
+    ? // Se dedujo por descarte, no por evidencia positiva: se declara flojo.
+      0.45
+    : category === 'GENERAL'
       ? 0.35
       : Math.min(0.99, 0.5 + (winner.score - runnerUp) / 20 + Math.min(winner.score, 20) / 60);
 
@@ -149,7 +186,7 @@ export function classifyEmail(email: ClassifiableEmail): ClassificationResult {
     confidence: Number(confidence.toFixed(2)),
     extractedData: extractMetadata(category, fullText, email),
     scores,
-    matched: matchedByCategory[category] ?? [],
+    matched: rescued ? ['fallback:correo masivo sin senal comercial'] : (matchedByCategory[category] ?? []),
   };
 }
 

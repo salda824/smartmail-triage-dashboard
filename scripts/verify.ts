@@ -484,6 +484,114 @@ async function main() {
   );
 
   // -------------------------------------------------------------------------
+  section('Rescate de boletines editoriales');
+  // -------------------------------------------------------------------------
+
+  const boletin =
+    'Cada semana analizo una empresa distinta. Esta vez toca una que lleva anos ' +
+    'creciendo sin que nadie la mire, y quiero explicar por que sigo sin comprarla ' +
+    'pese a los numeros. Empecemos por lo que reporto el trimestre pasado y sigamos ' +
+    'por lo que no aparece en el informe. Si no deseas recibir mas correos, puedes ' +
+    'darte de baja aqui.';
+
+  // Titular de gancho, sin una sola palabra clave: ninguna regla lo alcanza.
+  check(
+    'boletin con titular de gancho -> NEWS',
+    classifyCase('billyinvests@joincapitalclub.com', "a great company i won't touch", boletin) === 'NEWS',
+    classifyCase('billyinvests@joincapitalclub.com', "a great company i won't touch", boletin),
+  );
+
+  // El mismo pie de baja lo lleva un catalogo: ahi no debe aplicarse.
+  check(
+    'un catalogo con pie de baja sigue en PROMO',
+    classifyCase(
+      'adidas@co-news.adidas.com',
+      'Nueva coleccion con 30% de descuento',
+      'Compra ahora en la tienda. Envio gratis. Para dejar de recibir, darse de baja.',
+    ) === 'PROMO',
+  );
+
+  // Una notificacion social tambien trae pie de baja y no es un boletin.
+  check(
+    'una notificacion de LinkedIn no se rescata como NEWS',
+    classifyCase(
+      'messages-noreply@linkedin.com',
+      '5 personas han visto tu perfil',
+      'Tu perfil no pasa desapercibido esta semana. Mira quien te ha buscado y amplia tu red ' +
+        'con las personas que trabajan en tu sector. Gestiona tus preferencias de correo o puedes darte de baja.',
+    ) !== 'NEWS',
+    classifyCase(
+      'messages-noreply@linkedin.com',
+      '5 personas han visto tu perfil',
+      'Tu perfil no pasa desapercibido esta semana. Mira quien te ha buscado y amplia tu red ' +
+        'con las personas que trabajan en tu sector. Gestiona tus preferencias de correo o puedes darte de baja.',
+    ),
+  );
+
+  // Un correo transaccional corto no lleva pie de baja y no debe tocarse.
+  check(
+    'un aviso transaccional sigue en GENERAL',
+    classifyCase(
+      'noreply@github.com',
+      '[GitHub] Account deletion',
+      'This email is to confirm that you have deleted your account from GitHub.',
+    ) === 'GENERAL',
+  );
+
+  // Casos que el rescate se llevaba de mas cuando el descarte era laxo.
+  check(
+    'una oferta de un buzon de reclutamiento -> JOB, no NEWS',
+    classifyCase(
+      'talent@careers.mastercard.com',
+      '6 reasons to join Mastercard Bogota office',
+      'Discover what makes our Bogota office a great place to build your career. ' +
+        'We are growing across engineering, data and product. Read the full story and meet the ' +
+        'team behind it. If you prefer not to receive these, you can unsubscribe.',
+    ) === 'JOB',
+    classifyCase(
+      'talent@careers.mastercard.com',
+      '6 reasons to join Mastercard Bogota office',
+      'Discover what makes our Bogota office a great place to build your career. ' +
+        'We are growing across engineering, data and product. Read the full story and meet the ' +
+        'team behind it. If you prefer not to receive these, you can unsubscribe.',
+    ),
+  );
+  check(
+    'un aviso de seguridad de la cuenta no se rescata',
+    classifyCase(
+      'noreply-accounts@google.com',
+      'Compartiste algunos datos de tu Cuenta de Google con GitHub',
+      'Recibiste este correo porque usaste Acceder con Google para ingresar en GitHub. ' +
+        'Puedes revisar en cualquier momento que aplicaciones tienen acceso a tu cuenta y ' +
+        'retirarles el permiso desde la configuracion. Gestiona tus preferencias de correo.',
+    ) !== 'NEWS',
+    classifyCase(
+      'noreply-accounts@google.com',
+      'Compartiste algunos datos de tu Cuenta de Google con GitHub',
+      'Recibiste este correo porque usaste Acceder con Google para ingresar en GitHub. ' +
+        'Puedes revisar en cualquier momento que aplicaciones tienen acceso a tu cuenta y ' +
+        'retirarles el permiso desde la configuracion. Gestiona tus preferencias de correo.',
+    ),
+  );
+  check(
+    'un aviso operativo de aerolinea no se rescata',
+    classifyCase(
+      'milesandsmiles@milesandsmiles.turkishairlines.com',
+      'Information Regarding Asiana Airlines Flights',
+      'Please be informed that the codeshare agreement affecting some routes has changed. ' +
+        'Bookings already issued remain valid and no action is required from your side. ' +
+        'For details consult our website. You may unsubscribe from these notices.',
+    ) !== 'NEWS',
+    classifyCase(
+      'milesandsmiles@milesandsmiles.turkishairlines.com',
+      'Information Regarding Asiana Airlines Flights',
+      'Please be informed that the codeshare agreement affecting some routes has changed. ' +
+        'Bookings already issued remain valid and no action is required from your side. ' +
+        'For details consult our website. You may unsubscribe from these notices.',
+    ),
+  );
+
+  // -------------------------------------------------------------------------
   section('Identificadores de Gmail por IMAP');
   // -------------------------------------------------------------------------
   const { toGmailHexId, toGmailDecimalId } = await import('../src/lib/gmail/imap');

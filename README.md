@@ -244,8 +244,20 @@ El archivo puede ser un arreglo suelto o `{ "messages": [...] }`, y tolera
 
 > **Promociones no estaba en el diseño original.** Se añadió después de medir
 > una bandeja real: el 68% de los correos caía en *General*, casi todos
-> publicidad de retail, y el panel apenas hacía triaje. Con la categoría nueva,
-> *General* bajó al 42%.
+> publicidad de retail, y el panel apenas hacía triaje.
+
+Reparto sobre 90 correos reales, antes y después de añadir *Promociones* y el
+rescate de boletines:
+
+| Categoría | Antes | Después |
+| --- | ---: | ---: |
+| General | 61 (68%) | **30 (33%)** |
+| Promociones | — | 20 |
+| Ofertas de Empleo | 13 | 14 |
+| Urgente | 11 | 11 |
+| Noticias | 0 | 10 |
+| Pagos y Envíos | 4 | 4 |
+| Interesantes | 1 | 1 |
 
 ### Cómo decide
 
@@ -282,6 +294,30 @@ falsos positivos observados en correo real:
 La alternativa a la última —bajar el peso de esos remitentes— se probó y se
 descartó: arreglaba 3 falsos positivos pero perdía 10 aciertos. Una señal
 negativa precisa cuesta menos que una rebaja general.
+
+### Rescate de boletines
+
+Los boletines editoriales llegan con titulares de gancho —«eight tickers, one
+bet», «i was waiting to feel ready»— que no contienen ninguna palabra clave.
+Ninguna regla los alcanzaba y caían todos en *General*.
+
+Lo único que comparten es el pie de baja, pero ese pie también lo llevan los
+catálogos. De ahí una regla **por descarte**, que se aplica al final: si el
+mejor candidato fue `NEWS` y se quedó corto, el correo llega en lote, tiene
+cuerpo suficiente para ser una lectura, y **no** viene de una red social ni de
+un buzón de cuenta ni es un aviso operativo — entonces es un boletín.
+
+Estos correos se marcan con confianza 0,45: se dedujeron por descarte, no por
+evidencia positiva, y la tarjeta debe decirlo.
+
+Afinar esta regla costó dos intentos. Exigir «ninguna señal en absoluto»
+dejaba fuera justo a los boletines, que rondan los 4 puntos por hablar de
+mercados. La condición correcta no es la ausencia de señal, sino que la señal
+que hubo apuntara a `NEWS`.
+
+### Idiomas
+
+Español e inglés. El motor no cubre otros idiomas a propósito.
 
 ---
 
@@ -448,7 +484,7 @@ npm run sync -- --query "is:unread newer_than:7d" --max 50
 npm run verify
 ```
 
-83 comprobaciones: normalización de texto, parsing de montos en tres formatos,
+90 comprobaciones: normalización de texto, parsing de montos en tres formatos,
 extracción de fechas y guías, clasificación de los 19 correos de ejemplo,
 enriquecimiento de tarjetas, casos de regresión tomados de correo real, y el
 ciclo completo sincronizar → leer → marcar → borrar sobre una base de pruebas

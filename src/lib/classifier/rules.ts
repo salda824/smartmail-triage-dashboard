@@ -43,7 +43,10 @@ const JOB: CategoryRules = {
     s(/(indeed|glassdoor|computrabajo|elempleo|magneto365|hiring\.cafe|lever\.co|greenhouse\.io|workable|smartrecruiters|bamboohr|ashbyhq|jobvite|talent\.com|occ\.com|bumeran|zonajobs|getonbrd|torre\.(ai|co)|wellfound|angel\.co)/, 5, 'portal de empleo'),
     // Plataformas de seguimiento de candidatos: si escriben, es por un proceso.
     s(/(teamtailor|myworkday|workday|successfactors|taleo|icims|avature|recruitee|personio|factorial)/, 5, 'plataforma de reclutamiento'),
-    s(/(talent|careers?|recruit|rrhh|reclutamiento|jobs|empleo|seleccion|hiring)/, 3, 'buzon de reclutamiento'),
+    // Un buzon de reclutamiento basta por si solo: `talent@careers.empresa.com`
+    // no manda otra cosa. Con peso 3 se quedaba corto y sus correos acababan
+    // en General o, peor, rescatados como boletin.
+    s(/(talent|careers?|recruit|rrhh|reclutamiento|jobs|empleo|seleccion|hiring)/, 5, 'buzon de reclutamiento'),
   ],
   subject: [
     s(/\b(vacante|vacantes|oferta laboral|oferta de (?:empleo|trabajo)|convocatoria|puesto)\b/, 5, 'vacante'),
@@ -229,19 +232,18 @@ const PROMO: CategoryRules = {
     s(/(fcbayern|realmadrid|williamsf1|f1\.com|nba\.com|uefa)/, 5, 'club deportivo'),
   ],
   subject: [
-    // Precios en el asunto: "desde $699", "ab 280 EUR", "UNDER $1,199".
-    s(/(desde|from|ab|under|solo|nur|bis zu)\s*[\$€£]\s?\d|[\$€£]\s?\d{2,}/, 5, 'precio en el asunto'),
-    // Terminos comerciales alemanes: buena parte de esta bandeja llega en aleman.
-    s(/\b(rabatt|gutschein|angebot|angebote|sparen|deal|deals|kostenlos|gratis|jetzt sichern|sichere dir)\b/, 5, 'oferta en aleman'),
+    // Precios en el asunto: "desde $699", "UNDER $1,199", "a partir de $200".
+    s(/(desde|a partir de|from|under|starting at|solo por)\s*[\$€£]\s?\d|[\$€£]\s?\d{2,}/, 5, 'precio en el asunto'),
+    s(/\b(deal|deals|oferton|super oferta|mega oferta|solo por tiempo limitado|limited time)\b/, 5, 'oferta destacada'),
     s(/\d{1,3}\s?%\s?(?:de\s?)?(?:dto|descuento|off|rabatt|menos)/, 7, 'porcentaje de descuento'),
     s(/\b(descuento|descuentos|rebajas?|cup[oó]n|promocion|liquidacion|outlet|dto\b)/, 6, 'descuento'),
     s(/\b(oferta especial|ofertas? desde|precio especial|precios? bajos?|mejor precio|desde \$)/, 6, 'oferta'),
     s(/\b(black friday|cyber\s?(?:monday|days?)|hot sale|dia sin iva|buen fin)\b/, 7, 'campana comercial'),
-    s(/\b(envio gratis|free shipping|versandkostenfrei|envio sin costo)\b/, 6, 'envio gratis'),
-    s(/\b(compra (?:ya|ahora)|shop now|buy now|order now|jetzt (?:kaufen|shoppen)|comprar ahora)\b/, 6, 'llamada a comprar'),
-    s(/\b(nueva coleccion|new in|new arrivals?|nueva temporada|lo mas nuevo|neu (?:im|bei))\b/, 5, 'coleccion nueva'),
+    s(/\b(envio gratis|free shipping|envio sin costo)\b/, 6, 'envio gratis'),
+    s(/\b(compra (?:ya|ahora)|shop now|buy now|order now|comprar ahora)\b/, 6, 'llamada a comprar'),
+    s(/\b(nueva coleccion|new in|new arrivals?|nueva temporada|lo mas nuevo)\b/, 5, 'coleccion nueva'),
     s(/\b(ultimas unidades|stock limitado|sold out|casi agotado|solo (?:hoy|por hoy)|termina (?:hoy|manana)|ultimo dia para)\b/, 5, 'urgencia comercial'),
-    s(/\b(gana un|sorteo|premio|te regalamos|regalo de cumpleanos|birthday (?:discount|gift)|gratisbox)\b/, 5, 'sorteo o regalo'),
+    s(/\b(gana un|sorteo|premio|te regalamos|regalo de cumpleanos|birthday (?:discount|gift))\b/, 5, 'sorteo o regalo'),
     s(/\b(cupo preaprobado|preaprobad[oa]|credito preaprobado|tarjeta preaprobada)\b/, 6, 'credito preaprobado'),
     s(/\b(cashback|puntos|millas|miles|bonus|bono de)\b/, 4, 'puntos o millas'),
   ],
@@ -249,7 +251,7 @@ const PROMO: CategoryRules = {
     s(/\b(anade al carrito|add to cart|ver productos|ver la coleccion|explorar la tienda|visita la tienda)\b/, 5, 'catalogo'),
     s(/\b(antes \$|ahora \$|precio antes|precio ahora|ahorra \$|ahorra un)\b/, 5, 'comparacion de precio'),
     s(/\b(aplican terminos y condiciones|terminos y condiciones aplican|promocion valida hasta|valido hasta agotar)\b/, 4, 'letra pequena'),
-    s(/\b(codigo de descuento|usa el codigo|promo code|discount code|gutschein)\b/, 5, 'codigo promocional'),
+    s(/\b(codigo de descuento|usa el codigo|promo code|discount code)\b/, 5, 'codigo promocional'),
   ],
 };
 
@@ -275,7 +277,7 @@ export const NOISE_SENDERS =
  * Promociones porque el titular profesional del remitente mencionaba una tienda.
  */
 export const SOCIAL_SENDERS =
-  /(invitations?@|messages-noreply@|notifications-noreply@|groups-noreply@|connections@|friend|social)/i;
+  /(invitations?@|messages-noreply@|notifications-noreply@|groups-noreply@|connections@|friend|social|@(?:\w+\.)*(?:linkedin|facebook|instagram|twitter|tiktok|threads)\.com)/i;
 
 /**
  * Contenido y avisos operativos que llegan desde remitentes comerciales.
@@ -286,4 +288,22 @@ export const SOCIAL_SENDERS =
  * decida la categoria.
  */
 export const CONTENT_NOT_PROMO =
-  /(\b\d\s?-\s?\d\b|hat-?trick|cronica|jornada|partido|goleo|fichaje|alineacion|resultado del|information regarding|please be informed|wichtige information|aviso importante|cambio (?:de|en) (?:tu |el |la )?(?:vuelo|itinerario|reserva|horario)|politica de privacidad|privacy policy|terminos (?:de servicio|y condiciones) (?:han|cambian)|actualizacion de (?:nuestras|las) politicas)/i;
+  /(\b\d\s?-\s?\d\b|hat-?trick|cronica|jornada|partido|goleo|fichaje|alineacion|resultado del|information regarding|please be informed|aviso importante|cambio (?:de|en) (?:tu |el |la )?(?:vuelo|itinerario|reserva|horario)|politica de privacidad|privacy policy|terminos (?:de servicio|y condiciones) (?:han|cambian)|actualizacion de (?:nuestras|las) politicas)/i;
+
+/**
+ * Pie de correo masivo. Lo llevan por igual boletines y catalogos, asi que no
+ * distingue por si solo, pero si separa el envio en lote del correo personal
+ * o transaccional.
+ */
+export const BULK_FOOTER =
+  /(darse de baja|date de baja|cancelar (?:la )?suscripcion|dejar de recibir|unsubscribe|manage (?:your )?preferences|preferencias de correo|ver en el navegador|view (?:this )?in browser|no deseas recibir)/i;
+
+/**
+ * Remitentes de cuenta y seguridad.
+ *
+ * Sus correos llevan pie de baja como cualquier envio automatizado, pero son
+ * avisos personales sobre la cuenta, no lecturas: no deben rescatarse como
+ * boletines.
+ */
+export const ACCOUNT_SENDERS =
+  /(accounts?[.-]|no-?reply-accounts|security@|seguridad@|billing@|support@|soporte@|help@|admin@)/i;
